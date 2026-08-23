@@ -71,6 +71,11 @@ class CRPermissionTests(TestCase):
         self.assertContains(response, self.course.title)
         self.assertNotContains(response, self.other_course.title)
 
+    def test_cr_cannot_create_course(self):
+        response = self.client.get(reverse("courses:course-create"))
+
+        self.assertEqual(response.status_code, 403)
+
     def test_cr_can_create_session_only_for_assigned_course(self):
         response = self.client.post(
             reverse("courses:session-create", args=[self.course.pk]),

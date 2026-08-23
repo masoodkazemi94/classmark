@@ -53,7 +53,7 @@ class CourseModelTests(TestCase):
             course.full_clean()
 
         self.assertIn(
-            "Only users with the monitor role can create a course.",
+            "Only Monitor and Admin users can create a course.",
             context.exception.message_dict["monitor"],
         )
 

@@ -9,4 +9,17 @@ urlpatterns = [
     path("login/", LoginView.as_view(template_name="accounts/login.html"), name="login"),
     path("logout/", views.logout_view, name="logout"),
     path("crs/", views.cr_management, name="cr-management"),
+    path("students/", views.student_list, name="student-list"),
+    path("students/create/", views.student_create, name="student-create"),
+    path("students/<int:student_id>/edit/", views.student_update, name="student-update"),
+    path(
+        "students/<int:student_id>/deactivate/",
+        views.student_deactivate,
+        name="student-deactivate",
+    ),
+    path(
+        "students/<int:student_id>/restore/",
+        views.student_restore,
+        name="student-restore",
+    ),
 ]

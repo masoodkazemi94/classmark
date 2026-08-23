@@ -3,6 +3,10 @@
 {% block title %}Attendance scan issue | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>Attendance scan issue</h1>
-<p>{{ message }}</p>
+<section class="result-card">
+    <span class="result-icon result-icon--error"><svg viewBox="0 0 24 24"><path d="M11 7h2v6h-2V7Zm0 8h2v2h-2v-2Zm1-13 10 19H2L12 2Zm0 4.2L5.4 19h13.2L12 6.2Z"/></svg></span>
+    <span class="eyebrow" style="color:var(--danger)">Unable to check in</span>
+    <h1>Attendance scan issue</h1>
+    <p class="page-lead">{{ message }}</p>
+</section>
 {% endblock %}

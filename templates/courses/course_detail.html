@@ -3,69 +3,45 @@
 {% block title %}{{ course.code }} | ClassPulse{% endblock %}
 
 {% block content %}
-<p><a href="{% url 'courses:course-list' %}">Back to courses</a></p>
-<h1>{{ course.code }} - {{ course.title }}</h1>
-<p>{{ course.start_date }} to {{ course.end_date }}</p>
-{% if can_view_reports %}
-    <p>
-        <a class="button" href="{% url 'reports:course-report' course.pk %}">
-            View attendance report
-        </a>
-    </p>
-{% endif %}
+<a class="back-link" href="{% url 'courses:course-list' %}">← Back to courses</a>
+<section class="detail-strip">
+    <div><span class="eyebrow" style="color:#c7d2fe">{{ course.code }}</span><h1>{{ course.title }}</h1><p>{{ course.start_date|date:"M j, Y" }} — {{ course.end_date|date:"M j, Y" }}</p></div>
+    <div class="detail-metric"><small>Status</small><strong>{% if course.is_active %}Active{% else %}Inactive{% endif %}</strong></div>
+    <div class="detail-metric"><small>Students</small><strong>{{ enrollments|length }} enrolled</strong></div>
+    <div class="detail-metric"><small>Sessions</small><strong>{{ sessions|length }} total</strong></div>
+</section>
 
-<h2>Sessions</h2>
-<p>
-    <a class="button" href="{% url 'courses:session-create' course.pk %}">
-        Create session
-    </a>
-</p>
-{% if sessions %}
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Start time</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for session in sessions %}
-                <tr>
-                    <td>
-                        <a href="{% url 'attendance:session-detail' session.pk %}">
-                            {{ session.date }}
-                        </a>
-                    </td>
-                    <td>{{ session.start_time }}</td>
-                    <td>{{ session.get_status_display }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>No sessions have been created.</p>
-{% endif %}
+<div class="page-heading__actions" style="margin-bottom:1.25rem">
+    <a class="button" href="{% url 'courses:session-create' course.pk %}">＋ Create session</a>
+    {% if can_view_reports %}<a class="button button--secondary" href="{% url 'reports:course-report' course.pk %}">View attendance report</a>{% endif %}
+</div>
 
-<h2>Enrolled students</h2>
-<form method="post" action="{% url 'courses:enrollment-add' course.pk %}">
-    {% csrf_token %}
-    {{ enrollment_form.as_p }}
-    <button type="submit">Assign student</button>
-</form>
-{% if enrollments %}
-    <ul>
-        {% for enrollment in enrollments %}
-            <li>
-                {{ enrollment.student.username }} ({{ enrollment.student.get_role_display }})
-                <form method="post" action="{% url 'courses:enrollment-remove' course.pk enrollment.pk %}" style="display:inline">
-                    {% csrf_token %}
-                    <button type="submit">Remove</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <p>No active students are enrolled.</p>
-{% endif %}
+<div class="layout-grid">
+    <section class="panel panel--flush">
+        <div class="panel-header"><div><h2>Sessions</h2><p class="panel-subtitle">Class meetings and attendance status.</p></div></div>
+        {% if sessions %}
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Time</th><th>Status</th><th></th></tr></thead><tbody>
+            {% for session in sessions %}<tr>
+                <td><a class="cell-title" href="{% url 'attendance:session-detail' session.pk %}">{{ session.date|date:"D, M j, Y" }}</a></td>
+                <td>{{ session.start_time|time:"H:i" }}{% if session.end_time %} — {{ session.end_time|time:"H:i" }}{% endif %}</td>
+                <td>{% if session.status == "ACTIVE" %}<span class="badge badge--active">Active</span>{% elif session.status == "CLOSED" %}<span class="badge badge--closed">Closed</span>{% else %}<span class="badge badge--draft">Draft</span>{% endif %}</td>
+                <td class="text-right"><a href="{% url 'attendance:session-detail' session.pk %}">Open →</a></td>
+            </tr>{% endfor %}
+            </tbody></table></div>
+        {% else %}<div class="empty-state"><h2>No sessions yet</h2><p>Create the first class meeting for this course.</p></div>{% endif %}
+    </section>
+
+    <aside class="section-stack">
+        <section class="panel">
+            <h2>Assign student</h2><p class="panel-subtitle">Add a Student{% if can_view_reports %} or CR{% endif %} to this course.</p>
+            <form class="stack-form mt-1" method="post" action="{% url 'courses:enrollment-add' course.pk %}">{% csrf_token %}{{ enrollment_form.as_p }}<button type="submit">Assign to course</button></form>
+        </section>
+        <section class="panel panel--flush">
+            <div class="panel-header"><div><h2>Course roster</h2><p class="panel-subtitle">{{ enrollments|length }} active members</p></div></div>
+            {% if enrollments %}<div class="table-wrap"><table><tbody>
+                {% for enrollment in enrollments %}<tr><td><div class="student-cell"><span class="mini-avatar">{{ enrollment.student.username|first|upper }}</span><span><strong class="cell-title">{{ enrollment.student.username }}</strong><small class="cell-subtitle">{{ enrollment.student.get_role_display }}</small></span></div></td><td class="row-actions"><form method="post" action="{% url 'courses:enrollment-remove' course.pk enrollment.pk %}">{% csrf_token %}<button class="button button--danger button--small" type="submit">Remove</button></form></td></tr>{% endfor %}
+            </tbody></table></div>{% else %}<div class="empty-state"><p>No active students are enrolled.</p></div>{% endif %}
+        </section>
+    </aside>
+</div>
 {% endblock %}

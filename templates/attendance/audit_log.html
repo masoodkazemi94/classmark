@@ -3,34 +3,22 @@
 {% block title %}Attendance audit log | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>Attendance audit log</h1>
-<p>This history is visible only to Monitors and Admins.</p>
-<table>
-    <thead>
-        <tr>
-            <th>Time</th>
-            <th>Course/session</th>
-            <th>Student/section</th>
-            <th>Change</th>
-            <th>Changed by</th>
-            <th>Method</th>
-            <th>Note</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for log in audit_logs %}
-            <tr>
-                <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
-                <td>{{ log.course.code }} / {{ log.session.date|date:"Y-m-d" }}</td>
-                <td>{{ log.student.username }} / Section {{ log.section.section_number }}</td>
-                <td>{{ log.old_status|default:"—" }} → {{ log.new_status }} ({{ log.get_action_display }})</td>
-                <td>{{ log.changed_by|default:"System" }}</td>
-                <td>{{ log.get_recorded_method_display }}</td>
-                <td>{{ log.note|default:"—" }}</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="7">No attendance changes have been logged yet.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="page-heading">
+    <span class="eyebrow">Monitor control</span>
+    <h1>Attendance audit log</h1>
+    <p class="page-lead">A read-only trail of attendance inputs and corrections. This history is visible only to Monitors and Admins.</p>
+</div>
+<section class="panel panel--flush">
+    <div class="panel-header"><div><h2>Recent activity</h2><p class="panel-subtitle">Showing up to 500 latest changes.</p></div><span class="badge badge--info">Read only</span></div>
+    {% if audit_logs %}<div class="table-wrap"><table>
+        <thead><tr><th>Time</th><th>Course</th><th>Student</th><th>Change</th><th>Actor</th><th>Method</th><th>Note</th></tr></thead>
+        <tbody>{% for log in audit_logs %}<tr>
+            <td><span class="cell-title">{{ log.created_at|date:"M j, H:i" }}</span><small class="cell-subtitle">{{ log.session.date|date:"Y-m-d" }}</small></td>
+            <td><span class="course-code">{{ log.course.code }}</span><small class="cell-subtitle">Section {{ log.section.section_number }}</small></td>
+            <td><div class="student-cell"><span class="mini-avatar">{{ log.student.username|first|upper }}</span><strong>{{ log.student.username }}</strong></div></td>
+            <td><span class="attendance-status attendance-status--empty">{{ log.old_status|default:"New" }}</span> → <strong>{{ log.new_status }}</strong><small class="cell-subtitle">{{ log.get_action_display }}</small></td>
+            <td>{{ log.changed_by|default:"System" }}</td><td><span class="badge badge--muted">{{ log.get_recorded_method_display }}</span></td><td>{{ log.note|default:"—" }}</td>
+        </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="empty-state"><h2>No audit activity</h2><p>Attendance inputs and corrections will appear here automatically.</p></div>{% endif %}
+</section>
 {% endblock %}

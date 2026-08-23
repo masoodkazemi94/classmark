@@ -1,10 +1,11 @@
 from django.contrib import messages
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from accounts.decorators import course_manager_required, is_monitor
+from accounts.decorators import course_manager_required, is_monitor, monitor_required
 from accounts.models import User
 
-from .forms import ClassSessionForm, EnrollmentForm
+from .forms import ClassSessionForm, CourseForm, EnrollmentForm
 from .models import Course, Enrollment
 
 
@@ -24,8 +25,35 @@ def _get_accessible_course(user, course_id):
 
 @course_manager_required
 def course_list(request):
-    courses = _accessible_courses(request.user).order_by("code", "title")
-    return render(request, "courses/course_list.html", {"courses": courses})
+    courses = (
+        _accessible_courses(request.user)
+        .annotate(
+            active_student_count=Count(
+                "enrollments",
+                filter=Q(enrollments__is_active=True),
+                distinct=True,
+            ),
+            session_count=Count("sessions", distinct=True),
+        )
+        .order_by("code", "title")
+    )
+    return render(
+        request,
+        "courses/course_list.html",
+        {"courses": courses, "can_create_course": is_monitor(request.user)},
+    )
+
+
+@monitor_required
+def course_create(request):
+    form = CourseForm(request.POST or None, monitor=request.user)
+    if request.method == "POST" and form.is_valid():
+        course = form.save()
+        messages.success(request, f"{course.code} was created successfully.")
+        return redirect("courses:course-detail", course_id=course.pk)
+    if request.method == "POST":
+        messages.error(request, "Course was not created. Correct the errors below.")
+    return render(request, "courses/course_form.html", {"form": form})
 
 
 @course_manager_required

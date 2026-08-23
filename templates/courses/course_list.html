@@ -3,34 +3,42 @@
 {% block title %}Courses | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>Accessible courses</h1>
+<div class="page-heading page-heading--split">
+    <div>
+        <span class="eyebrow">Workspace</span>
+        <h1>Accessible courses</h1>
+        <p class="page-lead">Open a course to manage its roster, sessions, QR check-in, and attendance.</p>
+    </div>
+    {% if can_create_course %}
+        <div class="page-heading__actions">
+            <a class="button" href="{% url 'courses:course-create' %}">＋ Create course</a>
+        </div>
+    {% endif %}
+</div>
 
 {% if courses %}
-    <table>
-        <thead>
-            <tr>
-                <th>Code</th>
-                <th>Course</th>
-                <th>Dates</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for course in courses %}
-                <tr>
-                    <td>{{ course.code }}</td>
-                    <td>
-                        <a href="{% url 'courses:course-detail' course.pk %}">
-                            {{ course.title }}
-                        </a>
-                    </td>
-                    <td>{{ course.start_date }} to {{ course.end_date }}</td>
-                    <td>{% if course.is_active %}Active{% else %}Inactive{% endif %}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="course-grid">
+        {% for course in courses %}
+            <a class="course-card" href="{% url 'courses:course-detail' course.pk %}" aria-label="Open {{ course.code }} {{ course.title }}">
+                <div class="course-card__top">
+                    <span class="course-code">{{ course.code }}</span>
+                    {% if course.is_active %}<span class="badge badge--active"><span class="badge-dot"></span>Active</span>{% else %}<span class="badge badge--muted">Inactive</span>{% endif %}
+                </div>
+                <h2>{{ course.title }}</h2>
+                <p class="course-card__dates">{{ course.start_date|date:"M j, Y" }} — {{ course.end_date|date:"M j, Y" }}</p>
+                <div class="course-card__meta">
+                    <span class="meta-item"><strong>{{ course.active_student_count }}</strong>Students</span>
+                    <span class="meta-item"><strong>{{ course.session_count }}</strong>Sessions</span>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
 {% else %}
-    <p>You do not have access to any courses yet.</p>
+    <div class="panel empty-state">
+        <span class="empty-state__icon"><svg viewBox="0 0 24 24"><path d="m4 6 8-4 8 4-8 4-8-4Zm2 3.2 6 3 6-3V15c0 1.7-2.7 3-6 3s-6-1.3-6-3V9.2Z"/></svg></span>
+        <h2>No accessible courses</h2>
+        <p>{% if can_create_course %}Create your first course to begin organizing students and sessions.{% else %}A Monitor needs to assign you to a course before it appears here.{% endif %}</p>
+        {% if can_create_course %}<a class="button" href="{% url 'courses:course-create' %}">Create first course</a>{% endif %}
+    </div>
 {% endif %}
 {% endblock %}

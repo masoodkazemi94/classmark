@@ -3,77 +3,22 @@
 {% block title %}{{ student.username }} report | ClassPulse{% endblock %}
 
 {% block content %}
-<p>
-    <a href="{% url 'reports:course-report' course.pk %}">
-        Back to attendance report
-    </a>
-</p>
-<h1>Student attendance detail</h1>
-<p>{{ student.username }} in {{ course.code }} - {{ course.title }}</p>
-
-<h2>Totals</h2>
-<table>
-    <tbody>
-        <tr>
-            <th>Present sections</th>
-            <td>{{ report.summary.present_sections }}</td>
-        </tr>
-        <tr>
-            <th>Late sections</th>
-            <td>{{ report.summary.late_sections }}</td>
-        </tr>
-        <tr>
-            <th>Absent sections</th>
-            <td>{{ report.summary.absent_sections }}</td>
-        </tr>
-        <tr>
-            <th>Leave sections</th>
-            <td>{{ report.summary.leave_sections }}</td>
-        </tr>
-        <tr>
-            <th>Absence hours</th>
-            <td>{{ report.summary.absence_hours }}</td>
-        </tr>
-        <tr>
-            <th>Late-equivalent absences</th>
-            <td>{{ report.summary.late_equivalent_absences }}</td>
-        </tr>
-        <tr>
-            <th>Total absence equivalent</th>
-            <td>{{ report.summary.total_absence_equivalent }}</td>
-        </tr>
-    </tbody>
-</table>
-
-<h2>Attendance records</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Start time</th>
-            <th>Section</th>
-            <th>Status</th>
-            <th>Method</th>
-            <th>Recorded at</th>
-            <th>Note</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for record in report.records %}
-            <tr>
-                <td>{{ record.session.date|date:"Y-m-d" }}</td>
-                <td>{{ record.session.start_time }}</td>
-                <td>Section {{ record.section.section_number }}</td>
-                <td>{{ record.get_status_display }}</td>
-                <td>{{ record.get_recorded_method_display }}</td>
-                <td>{{ record.recorded_at }}</td>
-                <td>{{ record.note }}</td>
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan="7">No attendance records have been created.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="page-heading"><a class="back-link" href="{% url 'reports:course-report' course.pk %}">← Back to attendance report</a><span class="eyebrow">Student detail</span><h1>Student attendance detail</h1><p class="page-lead">{{ student.username }} · {{ course.code }} — {{ course.title }}</p></div>
+<div class="stats-grid">
+    <article class="stat-card stat-card--success"><span class="stat-card__label">Present sections</span><strong class="stat-card__value">{{ report.summary.present_sections }}</strong></article>
+    <article class="stat-card stat-card--warning"><span class="stat-card__label">Late sections</span><strong class="stat-card__value">{{ report.summary.late_sections }}</strong></article>
+    <article class="stat-card stat-card--danger"><span class="stat-card__label">Absent sections</span><strong class="stat-card__value">{{ report.summary.absent_sections }}</strong></article>
+    <article class="stat-card"><span class="stat-card__label">Leave sections</span><strong class="stat-card__value">{{ report.summary.leave_sections }}</strong></article>
+</div>
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+    <article class="stat-card"><span class="stat-card__label">Absence hours</span><strong class="stat-card__value">{{ report.summary.absence_hours }}</strong></article>
+    <article class="stat-card"><span class="stat-card__label">Late-equivalent absences</span><strong class="stat-card__value">{{ report.summary.late_equivalent_absences }}</strong></article>
+    <article class="stat-card"><span class="stat-card__label">Total absence equivalent</span><strong class="stat-card__value">{{ report.summary.total_absence_equivalent }}</strong></article>
+</div>
+<section class="panel panel--flush">
+    <div class="panel-header"><div><h2>Attendance records</h2><p class="panel-subtitle">Section-by-section history for this student.</p></div></div>
+    {% if report.records %}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Start time</th><th>Section</th><th>Status</th><th>Method</th><th>Recorded at</th><th>Note</th></tr></thead><tbody>
+        {% for record in report.records %}<tr><td>{{ record.session.date|date:"Y-m-d" }}</td><td>{{ record.session.start_time|time:"H:i" }}</td><td>Section {{ record.section.section_number }}</td><td>{% if record.status == "PRESENT" %}<span class="attendance-status attendance-status--present">Present</span>{% elif record.status == "LATE" %}<span class="attendance-status attendance-status--late">Late</span>{% elif record.status == "ABSENT" %}<span class="attendance-status attendance-status--absent">Absent</span>{% else %}<span class="attendance-status attendance-status--leave">Leave</span>{% endif %}</td><td><span class="badge badge--muted">{{ record.get_recorded_method_display }}</span></td><td>{{ record.recorded_at|date:"M j, Y H:i" }}</td><td>{{ record.note|default:"—" }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<div class="empty-state"><h2>No attendance records</h2><p>Records will appear after manual entry or QR check-in.</p></div>{% endif %}
+</section>
 {% endblock %}

@@ -124,16 +124,32 @@ STUDENT  QR attendance for courses where the student is actively enrolled
 A CR may edit ordinary students and their own attendance, but cannot edit or
 remove another CR. CRs cannot open reports or the attendance audit log.
 
+CRs also have a course-scoped Students page. They can create a Student while
+assigning them to one of their courses and edit ordinary Students enrolled in
+their courses. They cannot see unrelated Students, edit CR accounts, or globally
+deactivate accounts. Removing course access remains available from the roster.
+
+Monitors manage student accounts at `/accounts/students/`. They can create and
+edit Students or safely deactivate/restore accounts. Deactivation also removes
+active course access while preserving attendance and audit history.
+
+Monitors and Admins generate reports from `/reports/`. The report center offers
+an interactive course report, a calculated summary CSV, or a detailed raw
+attendance CSV from one searchable course selector.
+
 ## Basic Usage Flow
 
 1. Sign in as a Monitor or assigned CR.
-2. Open the course list and select a course.
-3. Create a class session if needed.
-4. Open the session detail page.
-5. Mark attendance manually, or open the QR page for an active session.
-6. Students sign in and scan the QR code while it is valid.
-7. Close the session to mark missing section records as `ABSENT`.
-8. As a Monitor, open the course report or audit log to review activity.
+2. As a Monitor, create student accounts from the Students page.
+3. Create a course from the course workspace if needed.
+4. Open a course, assign students, and create a class session.
+5. Open the session detail page.
+6. Mark attendance manually, or open the QR page for an active session.
+7. Students sign in and scan the QR code while it is valid.
+8. Close the session to mark missing section records as `ABSENT`.
+9. As a Monitor, open the Reports page, choose a course and output, then
+   generate the report.
+10. Open the audit log when you need to review attendance changes.
 
 Attendance is recorded per section. One session has exactly 3 sections, each
 section counts as 1 attendance hour, and every 3 `LATE` records count as 1
@@ -163,4 +179,5 @@ config/      Project settings, URLs, and deployment entry points
 courses/     Courses, enrollments, session form, and sample data command
 reports/     Attendance report services, views, and CSV exports
 templates/   Shared Django templates
+static/      Responsive ClassPulse design system
 ```

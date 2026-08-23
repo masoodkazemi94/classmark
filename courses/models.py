@@ -11,7 +11,7 @@ class Course(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="courses_created",
-        limit_choices_to={"role": "MONITOR"},
+        limit_choices_to={"role__in": ("MONITOR", "ADMIN")},
     )
     start_date = models.DateField()
     end_date = models.DateField()
@@ -28,9 +28,12 @@ class Course(models.Model):
     def clean(self):
         super().clean()
 
-        if self.monitor_id and self.monitor.role != self.monitor.Role.MONITOR:
+        if self.monitor_id and self.monitor.role not in {
+            self.monitor.Role.MONITOR,
+            self.monitor.Role.ADMIN,
+        }:
             raise ValidationError(
-                {"monitor": "Only users with the monitor role can create a course."}
+                {"monitor": "Only Monitor and Admin users can create a course."}
             )
 
         if self.start_date and self.end_date and self.end_date < self.start_date:

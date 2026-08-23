@@ -1,22 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}CR management | ClassPulse{% endblock %}
+{% block title %}CR team | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>CR management</h1>
-<p>Promote an existing student to CR. Assign the CR to courses from each course page.</p>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Promote to CR</button>
-</form>
+<div class="page-heading">
+    <span class="eyebrow">Access management</span>
+    <h1>CR team</h1>
+    <p class="page-lead">Promote trusted students to course assistants. Course access begins only after they are assigned from a course page.</p>
+</div>
 
-<h2>Current CR users</h2>
-<ul>
-    {% for cr in cr_users %}
-        <li>{{ cr.username }} ({{ cr.student_code }})</li>
-    {% empty %}
-        <li>No CR users have been created.</li>
-    {% endfor %}
-</ul>
+<div class="layout-grid">
+    <section class="panel">
+        <h2>Current CR users</h2>
+        <p class="panel-subtitle">Promoted assistants across ClassPulse.</p>
+        {% if cr_users %}
+            <div class="table-wrap mt-1">
+                <table>
+                    <thead><tr><th>CR</th><th>Student code</th><th>Role</th></tr></thead>
+                    <tbody>
+                        {% for cr in cr_users %}
+                            <tr>
+                                <td><div class="student-cell"><span class="mini-avatar">{{ cr.username|first|upper }}</span><strong>{{ cr.username }}</strong></div></td>
+                                <td>{{ cr.student_code }}</td>
+                                <td><span class="badge badge--info">CR assistant</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state"><h2>No CR users yet</h2><p>Promote the first student using the form.</p></div>
+        {% endif %}
+    </section>
+    <aside class="panel">
+        <span class="eyebrow">New assistant</span>
+        <h2>Promote a student</h2>
+        <p class="panel-subtitle">The student keeps their identity and receives CR permissions.</p>
+        <form method="post" class="stack-form mt-1">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Promote to CR</button>
+        </form>
+    </aside>
+</div>
 {% endblock %}

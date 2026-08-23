@@ -3,68 +3,51 @@
 {% block title %}Session {{ session.date|date:"Y-m-d" }} | ClassPulse{% endblock %}
 
 {% block content %}
-<p>
-    <a href="{% url 'courses:course-detail' session.course.pk %}">
-        Back to {{ session.course.code }}
-    </a>
-</p>
-<h1>Session detail</h1>
-<dl>
-    <dt>Course</dt>
-    <dd>{{ session.course.code }} - {{ session.course.title }}</dd>
-    <dt>Date</dt>
-    <dd>{{ session.date|date:"Y-m-d" }}</dd>
-    <dt>Time</dt>
-    <dd>{{ session.start_time }}{% if session.end_time %} to {{ session.end_time }}{% endif %}</dd>
-    <dt>Status</dt>
-    <dd>{{ session.get_status_display }}</dd>
-</dl>
+<a class="back-link" href="{% url 'courses:course-detail' session.course.pk %}">← Back to {{ session.course.code }}</a>
+<section class="detail-strip">
+    <div><span class="eyebrow" style="color:#c7d2fe">Session detail</span><h1>{{ session.date|date:"l, M j, Y" }}</h1><p>{{ session.course.code }} · {{ session.course.title }}</p></div>
+    <div class="detail-metric"><small>Time</small><strong>{{ session.start_time|time:"H:i" }}{% if session.end_time %} — {{ session.end_time|time:"H:i" }}{% endif %}</strong></div>
+    <div class="detail-metric"><small>Structure</small><strong>3 × 45 minutes</strong></div>
+    <div class="detail-metric"><small>Status</small><strong>{{ session.get_status_display }}</strong></div>
+</section>
 
 {% if session.status == "ACTIVE" %}
-    <p>
-        <a class="button" href="{% url 'attendance:session-qr' session.pk %}">
-            Show QR code
-        </a>
-    </p>
-    <form method="post" action="{% url 'attendance:session-close' session.pk %}">
-        {% csrf_token %}
-        <button class="button" type="submit">Close session</button>
-    </form>
+    <div class="page-heading__actions" style="margin-bottom:1.25rem">
+        <a class="button" href="{% url 'attendance:session-qr' session.pk %}">Show QR code</a>
+        <form method="post" action="{% url 'attendance:session-close' session.pk %}">{% csrf_token %}<button class="button button--danger" type="submit">Close session</button></form>
+    </div>
 {% endif %}
 
-<h2>Mark attendance manually</h2>
-<form method="post" action="{% url 'attendance:manual-attendance' session.pk %}">
-    {% csrf_token %}
-    {{ manual_attendance_form.as_p }}
-    <button class="button" type="submit">Update attendance</button>
-</form>
+<div class="layout-grid">
+    <section class="panel panel--flush">
+        <div class="panel-header"><div><h2>Attendance</h2><p class="panel-subtitle">One status per student for each section.</p></div><span class="badge badge--muted">{{ attendance_rows|length }} students</span></div>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Student</th>{% for section in sections %}<th>Section {{ section.section_number }}<span class="cell-subtitle">{{ section.duration_minutes }} min</span></th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for row in attendance_rows %}<tr>
+                    <td><div class="student-cell"><span class="mini-avatar">{{ row.student.username|first|upper }}</span><span><strong class="cell-title">{{ row.student.username }}</strong><small class="cell-subtitle">{{ row.student.student_code }}</small></span></div></td>
+                    {% for status in row.statuses %}<td>
+                        {% if status == "Present" %}<span class="attendance-status attendance-status--present">Present</span>
+                        {% elif status == "Late" %}<span class="attendance-status attendance-status--late">Late</span>
+                        {% elif status == "Absent" %}<span class="attendance-status attendance-status--absent">Absent</span>
+                        {% elif status == "Leave" %}<span class="attendance-status attendance-status--leave">Leave</span>
+                        {% else %}<span class="attendance-status attendance-status--empty">Not recorded</span>{% endif %}
+                    </td>{% endfor %}
+                </tr>
+                {% empty %}<tr><td colspan="4"><div class="empty-state"><p>No active students are enrolled.</p></div></td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
 
-<h2>Attendance</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Student</th>
-            {% for section in sections %}
-                <th>
-                    Section {{ section.section_number }}
-                    <small>({{ section.duration_minutes }} minutes)</small>
-                </th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in attendance_rows %}
-            <tr>
-                <td>{{ row.student.username }}</td>
-                {% for status in row.statuses %}
-                    <td>{{ status }}</td>
-                {% endfor %}
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan="4">No active students are enrolled.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <aside class="panel">
+        <span class="eyebrow">Quick update</span>
+        <h2>Mark attendance manually</h2>
+        <p class="panel-subtitle">Choose one section or apply the status to all three.</p>
+        <form class="stack-form mt-1" method="post" action="{% url 'attendance:manual-attendance' session.pk %}">
+            {% csrf_token %}
+            {{ manual_attendance_form.as_p }}
+            <button type="submit">Update attendance</button>
+        </form>
+    </aside>
+</div>
 {% endblock %}

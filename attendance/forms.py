@@ -2,6 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
+from accounts.forms import StudentChoiceField
+
 from .models import AttendanceStatus, SessionSection
 
 
@@ -11,7 +13,7 @@ class SessionSectionChoiceField(forms.ModelChoiceField):
 
 
 class ManualAttendanceForm(forms.Form):
-    student = forms.ModelChoiceField(queryset=get_user_model().objects.none())
+    student = StudentChoiceField(queryset=get_user_model().objects.none())
     section = SessionSectionChoiceField(
         queryset=SessionSection.objects.none(),
         required=False,
@@ -38,4 +40,10 @@ class ManualAttendanceForm(forms.Form):
                 Q(role=get_user_model().Role.STUDENT) | Q(pk=actor.pk)
             )
         self.fields["student"].queryset = students.order_by("username")
+        self.fields["student"].widget.attrs.update(
+            {
+                "data-searchable": "true",
+                "data-placeholder": "Search enrolled students…",
+            }
+        )
         self.fields["section"].queryset = session.sections.order_by("section_number")

@@ -3,11 +3,29 @@
 {% block title %}Sign in | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>Sign in</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-    <button type="submit">Sign in</button>
-</form>
+<div class="auth-layout">
+    <section class="auth-pitch">
+        <span class="eyebrow" style="color:#c7d2fe">Welcome back</span>
+        <h1>Attendance that stays accountable.</h1>
+        <p>Sign in to manage your courses, run class check-ins, and keep every attendance decision traceable.</p>
+    </section>
+    <section class="auth-card">
+        <span class="eyebrow">Secure access</span>
+        <h2>Sign in</h2>
+        <p class="text-muted">Use your ClassPulse account credentials.</p>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="form-alert">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form %}
+                <div class="field{% if field.errors %} field--error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+            <button class="button--block" type="submit">Sign in</button>
+        </form>
+    </section>
+</div>
 {% endblock %}

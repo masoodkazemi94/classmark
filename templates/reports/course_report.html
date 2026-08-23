@@ -3,56 +3,18 @@
 {% block title %}{{ course.code }} reports | ClassPulse{% endblock %}
 
 {% block content %}
-<p>
-    <a href="{% url 'courses:course-detail' course.pk %}">
-        Back to {{ course.code }}
-    </a>
-</p>
-<h1>Attendance report</h1>
-<p>{{ course.code }} - {{ course.title }}</p>
-<p>
-    <a class="button" href="{% url 'reports:course-report-csv' course.pk %}">
-        Export summary CSV
-    </a>
-    <a class="button" href="{% url 'reports:course-attendance-records-csv' course.pk %}">
-        Export detailed CSV
-    </a>
-</p>
-
-<table>
-    <thead>
-        <tr>
-            <th>Student</th>
-            <th>Present sections</th>
-            <th>Late sections</th>
-            <th>Absent sections</th>
-            <th>Leave sections</th>
-            <th>Absence hours</th>
-            <th>Late-equivalent absences</th>
-            <th>Total absence equivalent</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in report_rows %}
-            <tr>
-                <td>
-                    <a href="{% url 'reports:student-report-detail' course.pk row.student.pk %}">
-                        {{ row.student.username }}
-                    </a>
-                </td>
-                <td>{{ row.present_sections }}</td>
-                <td>{{ row.late_sections }}</td>
-                <td>{{ row.absent_sections }}</td>
-                <td>{{ row.leave_sections }}</td>
-                <td>{{ row.absence_hours }}</td>
-                <td>{{ row.late_equivalent_absences }}</td>
-                <td>{{ row.total_absence_equivalent }}</td>
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan="8">No active students are enrolled.</td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="page-heading page-heading--split">
+    <div><a class="back-link" href="{% url 'courses:course-detail' course.pk %}">← Back to {{ course.code }}</a><span class="eyebrow">Monitor report</span><h1>Attendance report</h1><p class="page-lead">{{ course.code }} · {{ course.title }}</p></div>
+    <div class="page-heading__actions"><a class="button button--secondary" href="{% url 'reports:course-report-csv' course.pk %}">Export summary CSV</a><a class="button" href="{% url 'reports:course-attendance-records-csv' course.pk %}">Export detailed CSV</a></div>
+</div>
+<section class="panel panel--flush">
+    <div class="panel-header"><div><h2>Student totals</h2><p class="panel-subtitle">Three late sections count as one absence equivalent.</p></div></div>
+    {% if report_rows %}<div class="table-wrap"><table>
+        <thead><tr><th>Student</th><th>Present sections</th><th>Late sections</th><th>Absent sections</th><th>Leave sections</th><th>Absence hours</th><th>Late-equivalent absences</th><th>Total absence equivalent</th></tr></thead>
+        <tbody>{% for row in report_rows %}<tr>
+            <td><a class="student-cell" href="{% url 'reports:student-report-detail' course.pk row.student.pk %}"><span class="mini-avatar">{{ row.student.username|first|upper }}</span><span><strong class="cell-title">{{ row.student.username }}</strong><small class="cell-subtitle">{{ row.student.student_code }}</small></span></a></td>
+            <td><span class="attendance-status attendance-status--present">{{ row.present_sections }}</span></td><td><span class="attendance-status attendance-status--late">{{ row.late_sections }}</span></td><td><span class="attendance-status attendance-status--absent">{{ row.absent_sections }}</span></td><td><span class="attendance-status attendance-status--leave">{{ row.leave_sections }}</span></td><td>{{ row.absence_hours }}</td><td>{{ row.late_equivalent_absences }}</td><td><strong>{{ row.total_absence_equivalent }}</strong></td>
+        </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="empty-state"><h2>No students to report</h2><p>Assign students and record attendance to build this report.</p></div>{% endif %}
+</section>
 {% endblock %}

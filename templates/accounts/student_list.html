@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Students | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="page-heading page-heading--split">
+    <div>
+        <span class="eyebrow">People directory</span>
+        <h1>Students</h1>
+        <p class="page-lead">{% if can_global_manage %}Create accounts, maintain student information, and control access without losing attendance history.{% else %}Create and update ordinary students connected to your assigned courses.{% endif %}</p>
+    </div>
+    <a class="button" href="{% url 'accounts:student-create' %}">＋ Create student</a>
+</div>
+
+<section class="panel panel--flush">
+    <div class="panel-header student-toolbar">
+        <div><h2>Student directory</h2><p class="panel-subtitle">{% if can_global_manage %}Students and promoted CR assistants{% else %}Ordinary students in your assigned courses{% endif %}</p></div>
+        <form method="get" class="search-form" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20.7 19.3-4.1-4.1a7 7 0 1 0-1.4 1.4l4.1 4.1 1.4-1.4ZM5 11a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg>
+            <input type="search" name="q" value="{{ query }}" placeholder="Search name, code, or email…" aria-label="Search students">
+            {% if query %}<a href="{% url 'accounts:student-list' %}">Clear</a>{% endif %}
+        </form>
+    </div>
+    {% if students %}
+        <div class="table-wrap"><table>
+            <thead><tr><th>Student</th><th>Code</th><th>Contact</th><th>Role</th><th>Courses</th><th>Status</th><th></th></tr></thead>
+            <tbody>{% for student in students %}<tr>
+                <td><div class="student-cell"><span class="mini-avatar">{{ student.username|first|upper }}</span><span><strong class="cell-title">{{ student.get_full_name|default:student.username }}</strong><small class="cell-subtitle">@{{ student.username }}</small></span></div></td>
+                <td><strong>{{ student.student_code }}</strong></td>
+                <td>{{ student.email|default:"—" }}{% if student.phone_number %}<small class="cell-subtitle">{{ student.phone_number }}</small>{% endif %}</td>
+                <td>{% if student.role == "CR" %}<span class="badge badge--info">CR assistant</span>{% else %}<span class="badge badge--muted">Student</span>{% endif %}</td>
+                <td>{{ student.active_course_count }}</td>
+                <td>{% if student.is_active %}<span class="badge badge--active"><span class="badge-dot"></span>Active</span>{% else %}<span class="badge badge--closed">Inactive</span>{% endif %}</td>
+                <td><div class="row-actions row-actions--gap">
+                    <a class="button button--secondary button--small" href="{% url 'accounts:student-update' student.pk %}">Edit</a>
+                    {% if can_global_manage %}
+                        {% if student.is_active %}<form method="post" action="{% url 'accounts:student-deactivate' student.pk %}">{% csrf_token %}<button class="button button--danger button--small" type="submit">Deactivate</button></form>
+                        {% else %}<form method="post" action="{% url 'accounts:student-restore' student.pk %}">{% csrf_token %}<button class="button button--small" type="submit">Restore</button></form>{% endif %}
+                    {% endif %}
+                </div></td>
+            </tr>{% endfor %}</tbody>
+        </table></div>
+    {% else %}
+        <div class="empty-state"><span class="empty-state__icon"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm-9 9c0-4.4 4-7 9-7s9 2.6 9 7H3Z"/></svg></span><h2>No students found</h2><p>{% if query %}Try a different search or clear the filter.{% else %}Create the first student account to begin building course rosters.{% endif %}</p>{% if not query %}<a class="button" href="{% url 'accounts:student-create' %}">Create student</a>{% endif %}</div>
+    {% endif %}
+</section>
+{% endblock %}

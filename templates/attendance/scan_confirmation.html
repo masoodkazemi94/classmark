@@ -3,12 +3,14 @@
 {% block title %}Attendance recorded | ClassPulse{% endblock %}
 
 {% block content %}
-<h1>Attendance recorded</h1>
-<p>{{ message }}</p>
-<dl>
-    <dt>Status</dt>
-    <dd>{{ status|title }}</dd>
-    <dt>Recorded sections</dt>
-    <dd>{{ record_count }}</dd>
-</dl>
+<section class="result-card">
+    <span class="result-icon result-icon--success"><svg viewBox="0 0 24 24"><path d="m9.2 16.2-4.4-4.4-1.6 1.6 6 6L21 7.6 19.4 6 9.2 16.2Z"/></svg></span>
+    <span class="eyebrow">Check-in complete</span>
+    <h1>Attendance recorded</h1>
+    <p class="page-lead">{{ message }}</p>
+    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-top:1.5rem">
+        <div class="stat-card"><span class="stat-card__label">Status</span><strong class="stat-card__value">{{ status|title }}</strong></div>
+        <div class="stat-card"><span class="stat-card__label">Recorded sections</span><strong class="stat-card__value">{{ record_count }}</strong></div>
+    </div>
+</section>
 {% endblock %}

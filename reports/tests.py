@@ -266,6 +266,59 @@ class ReportViewTests(TestCase):
     def _csv_rows(self, response):
         return list(csv.reader(io.StringIO(response.content.decode())))
 
+    def test_monitor_can_open_report_center(self):
+        self.client.force_login(self.monitor)
+
+        response = self.client.get(reverse("reports:report-center"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Generate attendance report")
+        self.assertContains(response, self.course.code)
+        self.assertContains(response, "View interactive report")
+
+    def test_report_center_routes_each_output_to_existing_report(self):
+        self.client.force_login(self.monitor)
+        outputs = {
+            "VIEW": "reports:course-report",
+            "SUMMARY_CSV": "reports:course-report-csv",
+            "DETAIL_CSV": "reports:course-attendance-records-csv",
+        }
+
+        for output, route in outputs.items():
+            with self.subTest(output=output):
+                response = self.client.post(
+                    reverse("reports:report-center"),
+                    {"course": self.course.pk, "output": output},
+                )
+                self.assertRedirects(
+                    response,
+                    reverse(route, args=[self.course.pk]),
+                    fetch_redirect_response=False,
+                )
+
+    def test_cr_cannot_access_report_center(self):
+        cr = get_user_model().objects.create_user(
+            username="report-cr",
+            role=get_user_model().Role.CR,
+            student_code="CR-REPORT",
+        )
+        self.client.force_login(cr)
+
+        response = self.client.get(reverse("reports:report-center"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_user_is_redirected_from_report_center(self):
+        url = reverse("reports:report-center")
+
+        response = self.client.get(url)
+
+        self.assertRedirects(
+            response,
+            f"/accounts/login/?next={url}",
+            fetch_redirect_response=False,
+        )
+
     def test_anonymous_user_is_redirected_from_course_report(self):
         url = reverse("reports:course-report", args=[self.course.pk])
 

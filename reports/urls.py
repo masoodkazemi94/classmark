@@ -5,6 +5,7 @@ from . import views
 app_name = "reports"
 
 urlpatterns = [
+    path("", views.report_center, name="report-center"),
     path("courses/<int:course_id>/", views.course_report, name="course-report"),
     path(
         "courses/<int:course_id>/export.csv",

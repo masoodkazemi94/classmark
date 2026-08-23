@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Generate report | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+    <span class="eyebrow">Monitor reports</span>
+    <h1>Generate attendance report</h1>
+    <p class="page-lead">Choose a course and the report format you need. Calculations always use the latest attendance records.</p>
+</div>
+
+<div class="layout-grid report-builder">
+    <section class="panel">
+        <div class="panel-header panel-header--inset">
+            <div><h2>Report settings</h2><p class="panel-subtitle">Select one course and output format.</p></div>
+            <span class="badge badge--active"><span class="badge-dot"></span>Live data</span>
+        </div>
+        <form method="post" class="stack-form report-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="form-alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="field{% if form.course.errors %} field--error{% endif %}">
+                <label for="{{ form.course.id_for_label }}">Course</label>
+                {{ form.course }}
+                {{ form.course.errors }}
+            </div>
+            <fieldset class="choice-field">
+                <legend>Output format</legend>
+                {{ form.output }}
+                {{ form.output.errors }}
+            </fieldset>
+            <button class="button--block" type="submit">Generate report</button>
+        </form>
+    </section>
+
+    <aside class="section-stack">
+        <article class="panel output-guide">
+            <span class="output-icon output-icon--view"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3V5Zm2 2v10h14V7H5Zm2 2h4v6H7V9Zm6 0h4v2h-4V9Zm0 4h4v2h-4v-2Z"/></svg></span>
+            <div><h3>Interactive report</h3><p>Review every active student’s totals and open individual attendance histories.</p></div>
+        </article>
+        <article class="panel output-guide">
+            <span class="output-icon output-icon--summary"><svg viewBox="0 0 24 24"><path d="M5 2h10l4 4v16H5V2Zm2 2v16h10V8h-4V4H7Zm2 7h6v2H9v-2Zm0 4h6v2H9v-2Z"/></svg></span>
+            <div><h3>Summary CSV</h3><p>One row per student with section counts and calculated absence equivalents.</p></div>
+        </article>
+        <article class="panel output-guide">
+            <span class="output-icon output-icon--detail"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3Zm2 2v3h14V5H5Zm0 5v3h4v-3H5Zm6 0v3h8v-3h-8Zm-6 5v4h4v-4H5Zm6 0v4h8v-4h-8Z"/></svg></span>
+            <div><h3>Detailed CSV</h3><p>Every raw attendance entry with date, section, status, source, and note.</p></div>
+        </article>
+    </aside>
+</div>
+{% endblock %}

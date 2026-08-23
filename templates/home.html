@@ -1,10 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>ClassPulse</h1>
-{% if user.is_authenticated and user.role == "MONITOR" or user.is_authenticated and user.role == "CR" or user.is_superuser %}
-    <p><a class="button" href="{% url 'courses:course-list' %}">Open courses</a></p>
-{% else %}
-    <p>Classroom attendance for section-based sessions.</p>
-{% endif %}
+<section class="hero">
+    <div class="hero__content">
+        <span class="eyebrow" style="color:#c7d2fe">Attendance, without the friction</span>
+        <h1>Every class.<br>Every section. Clear.</h1>
+        <p>ClassPulse gives your team one reliable place for course rosters, QR check-ins, manual attendance, and accountable change history.</p>
+        <div class="hero-actions">
+            {% if user.is_authenticated and user.role == "MONITOR" or user.is_authenticated and user.role == "ADMIN" or user.is_authenticated and user.role == "CR" or user.is_superuser %}
+                <a class="button button--secondary" href="{% url 'courses:course-list' %}">Open course workspace</a>
+                {% if user.role == "MONITOR" or user.role == "ADMIN" or user.is_superuser %}
+                    <a class="button" href="{% url 'courses:course-create' %}">Create a course</a>
+                {% endif %}
+            {% elif user.is_authenticated %}
+                <span class="badge badge--info">Signed in as {{ user.get_role_display }}</span>
+            {% else %}
+                <a class="button button--secondary" href="{% url 'accounts:login' %}">Sign in to ClassPulse</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="stats-grid mt-1">
+    <article class="stat-card"><span class="stat-card__label">Structure</span><strong class="stat-card__value">3</strong><span class="text-muted">sections per session</span></article>
+    <article class="stat-card"><span class="stat-card__label">Duration</span><strong class="stat-card__value">45m</strong><span class="text-muted">per section</span></article>
+    <article class="stat-card"><span class="stat-card__label">QR security</span><strong class="stat-card__value">30s</strong><span class="text-muted">default token lifetime</span></article>
+    <article class="stat-card"><span class="stat-card__label">Accountability</span><strong class="stat-card__value">100%</strong><span class="text-muted">attendance changes logged</span></article>
+</div>
 {% endblock %}

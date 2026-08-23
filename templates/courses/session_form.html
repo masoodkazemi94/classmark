@@ -3,17 +3,20 @@
 {% block title %}Create session | ClassPulse{% endblock %}
 
 {% block content %}
-<p>
-    <a href="{% url 'courses:course-detail' course.pk %}">
-        Back to {{ course.code }}
-    </a>
-</p>
-<h1>Create session</h1>
-<p>{{ course.code }} - {{ course.title }}</p>
-
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create session</button>
-</form>
+<div class="page-heading">
+    <a class="back-link" href="{% url 'courses:course-detail' course.pk %}">← Back to {{ course.code }}</a>
+    <span class="eyebrow">{{ course.code }} · Session setup</span>
+    <h1>Create session</h1>
+    <p class="page-lead">{{ course.title }} · A new session automatically includes three 45-minute attendance sections.</p>
+</div>
+<div class="form-shell">
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-alert">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="field-grid">
+            {% for field in form %}<div class="field{% if field.errors %} field--error{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+        </div>
+        <div class="form-actions"><button type="submit">Create session</button><a class="button button--secondary" href="{% url 'courses:course-detail' course.pk %}">Cancel</a></div>
+    </form>
+</div>
 {% endblock %}

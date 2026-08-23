@@ -1,11 +1,12 @@
 import csv
 
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import monitor_required
 from courses.models import Course, Enrollment
 
+from .forms import ReportGenerationForm
 from .services import (
     get_course_attendance_records,
     get_course_report,
@@ -44,6 +45,24 @@ def _csv_response(filename):
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+@monitor_required
+def report_center(request):
+    form = ReportGenerationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        course = form.cleaned_data["course"]
+        output = form.cleaned_data["output"]
+        route = {
+            ReportGenerationForm.Output.VIEW: "reports:course-report",
+            ReportGenerationForm.Output.SUMMARY_CSV: "reports:course-report-csv",
+            ReportGenerationForm.Output.DETAIL_CSV: (
+                "reports:course-attendance-records-csv"
+            ),
+        }[output]
+        return redirect(route, course_id=course.pk)
+
+    return render(request, "reports/report_center.html", {"form": form})
 
 
 @monitor_required

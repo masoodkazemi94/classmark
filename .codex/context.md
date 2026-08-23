@@ -7,15 +7,19 @@ templates, forms, a custom user model, Django Unfold, and QR codes.
 
 * `ADMIN`: full administrative access.
 * `MONITOR`: accesses every course, manages CR promotion, can manage attendance,
-  and can view reports, exports, and audit history.
+  student accounts, and can view reports, exports, and audit history.
 * `CR`: a promoted student. An active `Enrollment` assigns the CR to a course.
-  CRs can manage sessions, QR codes, ordinary student enrollments, ordinary
-  student attendance, and their own attendance only for assigned courses.
+  CRs can manage sessions, QR codes, ordinary student accounts/enrollments,
+  ordinary student attendance, and their own attendance only for assigned
+  courses. New Students created by a CR must be assigned to one of those courses.
 * `STUDENT`: can record their own QR attendance when actively enrolled.
 
-A CR cannot edit or deactivate another CR and cannot view reports, exports, or
-audit history. `Course.monitor` records who created the course but all Monitors
-can access all courses.
+A CR cannot view unrelated Students, edit or deactivate another CR, globally
+deactivate accounts, or view reports, exports, or audit history. `Course.monitor`
+records who created the course but all Monitors can access all courses.
+
+Student deletion is implemented as safe deactivation: deactivate the user and
+active enrollments, but retain the user, attendance records, and audit history.
 
 ## Attendance rules
 
@@ -38,6 +42,9 @@ courses/     courses, enrollments, session creation, enrollment management
 attendance/  sessions, records, QR flow, audit model, business services
 reports/     calculations, report pages, CSV exports
 ```
+
+Monitor/Admin report generation starts at `/reports/`, where a course and one of
+three existing outputs (interactive, summary CSV, detailed CSV) are selected.
 
 Attendance writes belong in `attendance/services.py`; reports belong in
 `reports/services.py`. Views coordinate HTTP and permissions. Preserve database

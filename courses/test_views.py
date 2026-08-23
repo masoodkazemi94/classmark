@@ -81,6 +81,33 @@ class TeacherCourseViewTests(TestCase):
         self.assertContains(response, self.course.title)
         self.assertContains(response, self.student.username)
 
+    def test_monitor_can_create_course(self):
+        self.client.force_login(self.monitor)
+
+        response = self.client.post(
+            reverse("courses:course-create"),
+            {
+                "title": "Software Engineering",
+                "code": "se-201",
+                "start_date": "2026-09-01",
+                "end_date": "2026-12-15",
+            },
+        )
+
+        course = Course.objects.get(code="SE-201")
+        self.assertEqual(course.monitor, self.monitor)
+        self.assertRedirects(
+            response,
+            reverse("courses:course-detail", args=[course.pk]),
+        )
+
+    def test_student_cannot_create_course(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse("courses:course-create"))
+
+        self.assertEqual(response.status_code, 403)
+
     def test_monitor_can_view_course_created_by_another_monitor(self):
         self.client.force_login(self.monitor)
 
