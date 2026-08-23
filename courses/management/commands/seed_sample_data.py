@@ -43,14 +43,21 @@ class Command(BaseCommand):
                 "first_name": "Sample",
                 "last_name": "Teacher",
                 "role": user_model.Role.TEACHER,
+                "is_staff": True,
             },
         )
         if created:
             teacher.set_password(SAMPLE_PASSWORD)
             teacher.save(update_fields=("password",))
-        elif teacher.role != user_model.Role.TEACHER:
+        changed_fields = []
+        if teacher.role != user_model.Role.TEACHER:
             teacher.role = user_model.Role.TEACHER
-            teacher.save(update_fields=("role",))
+            changed_fields.append("role")
+        if not teacher.is_staff:
+            teacher.is_staff = True
+            changed_fields.append("is_staff")
+        if changed_fields:
+            teacher.save(update_fields=changed_fields)
         return teacher
 
     def _get_or_create_students(self, user_model):

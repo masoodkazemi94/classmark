@@ -2,6 +2,8 @@ import secrets
 
 from .base import *
 
+load_dotenv(BASE_DIR / ".env", override=True)
+
 DEBUG = get_bool_env("DEBUG", default=True)
 
 if not SECRET_KEY:

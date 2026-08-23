@@ -154,6 +154,7 @@ class SampleDataCommandTests(TestCase):
         session = ClassSession.objects.get(course=course, date=date(2026, 9, 1))
 
         self.assertEqual(teacher.role, user_model.Role.TEACHER)
+        self.assertTrue(teacher.is_staff)
         self.assertEqual(students.count(), 3)
         self.assertEqual(
             set(students.values_list("role", flat=True)),

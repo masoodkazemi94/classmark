@@ -5,8 +5,8 @@ courses, enroll students, create class sessions, mark attendance for each of the
 3 fixed session sections, show short-lived QR codes, close sessions, and review
 absence reports.
 
-The app is intentionally simple: Django templates, Django forms, PostgreSQL for
-normal development, and Django tests.
+The app is intentionally simple: Django templates, Django forms, Django Unfold
+for the admin UI, PostgreSQL for normal development, and Django tests.
 
 ## Requirements
 
@@ -97,6 +97,10 @@ python manage.py runserver
 
 Open `http://127.0.0.1:8000/`.
 
+Open `http://127.0.0.1:8000/admin/` for the Unfold-powered Django admin.
+The admin home page includes a ClassPulse dashboard with teacher shortcuts for
+courses, sessions, QR check-in, and attendance reports.
+
 Sample login data created by `seed_sample_data`:
 
 ```text
@@ -104,6 +108,9 @@ Teacher: sample_teacher
 Students: sample_student_1, sample_student_2, sample_student_3
 Password: classpulse123
 ```
+
+The sample teacher is marked as staff so they can sign in to `/admin/` and use
+the teacher dashboard.
 
 ## Basic Usage Flow
 

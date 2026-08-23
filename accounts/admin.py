@@ -1,30 +1,78 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
+from django.utils.html import format_html
+from unfold.admin import ModelAdmin
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 from .models import User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
     list_display = (
         "username",
         "email",
-        "role",
+        "role_badge",
         "student_code",
+        "phone_number",
         "is_staff",
-        "is_active",
+        "active_badge",
     )
-    list_filter = UserAdmin.list_filter + ("role",)
-    search_fields = UserAdmin.search_fields + ("student_code",)
-    fieldsets = UserAdmin.fieldsets + (
+    list_filter = BaseUserAdmin.list_filter + ("role",)
+    search_fields = BaseUserAdmin.search_fields + ("student_code",)
+    ordering = ("username",)
+    fieldsets = BaseUserAdmin.fieldsets + (
         (
             "ClassPulse",
             {"fields": ("role", "student_code", "phone_number")},
         ),
     )
-    add_fieldsets = UserAdmin.add_fieldsets + (
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (
             "ClassPulse",
             {"fields": ("role", "student_code", "phone_number")},
         ),
     )
+
+    @admin.display(ordering="role", description="Role")
+    def role_badge(self, obj):
+        modifiers = {
+            User.Role.ADMIN: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
+            User.Role.TEACHER: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
+            User.Role.STUDENT: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300",
+        }
+        return format_html(
+            '<span class="rounded-full px-2 py-1 text-xs font-medium {}">{}</span>',
+            modifiers.get(
+                obj.role,
+                "bg-base-100 text-base-700 dark:bg-base-800 dark:text-base-300",
+            ),
+            obj.get_role_display(),
+        )
+
+    @admin.display(ordering="is_active", description="Status")
+    def active_badge(self, obj):
+        badge_class = (
+            "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
+            if obj.is_active
+            else "bg-base-100 text-base-700 dark:bg-base-800 dark:text-base-300"
+        )
+        label = "Active" if obj.is_active else "Inactive"
+        return format_html(
+            '<span class="rounded-full px-2 py-1 text-xs font-medium {}">{}</span>',
+            badge_class,
+            label,
+        )
+
+
+admin.site.unregister(Group)
+
+
+@admin.register(Group)
+class GroupAdmin(BaseGroupAdmin, ModelAdmin):
+    pass

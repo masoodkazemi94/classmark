@@ -1,0 +1,190 @@
+{% extends "admin/base.html" %}
+{% load i18n unfold %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_("Django site admin") }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col gap-8">
+        <div class="flex flex-col gap-2">
+            <h1 class="font-semibold text-2xl text-font-important-light dark:text-font-important-dark">
+                {{ dashboard_title }}
+            </h1>
+            <p class="text-font-subtle-light dark:text-font-subtle-dark">
+                {{ dashboard_subtitle }}
+            </p>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {% for card in stat_cards %}
+                {% component "unfold/components/card.html" with icon=card.icon %}
+                    <div class="flex flex-col gap-1">
+                        <span class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                            {{ card.label }}
+                        </span>
+                        <strong class="font-semibold text-3xl text-font-important-light dark:text-font-important-dark">
+                            {{ card.value }}
+                        </strong>
+                    </div>
+                {% endcomponent %}
+            {% endfor %}
+        </div>
+
+        <div>
+            <h2 class="font-semibold mb-4 text-lg text-font-important-light dark:text-font-important-dark">
+                Quick access
+            </h2>
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {% for link in quick_links %}
+                    {% component "unfold/components/card.html" with href=link.url icon=link.icon size="md" %}
+                        <div class="flex flex-col gap-1">
+                            <strong class="text-font-important-light dark:text-font-important-dark">
+                                {{ link.title }}
+                            </strong>
+                            <span class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                                {{ link.description }}
+                            </span>
+                        </div>
+                    {% endcomponent %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid gap-8 xl:grid-cols-3">
+            <div class="flex flex-col gap-8 xl:col-span-2">
+                {% component "unfold/components/card.html" with title="Recent sessions" %}
+                    <div class="-m-6 overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-base-200 dark:border-base-800">
+                                    <th class="px-6 py-3 text-left text-sm">Course</th>
+                                    <th class="px-6 py-3 text-left text-sm">Date</th>
+                                    <th class="px-6 py-3 text-left text-sm">Status</th>
+                                    <th class="px-6 py-3 text-left text-sm">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in session_rows %}
+                                    <tr class="border-b border-base-200 last:border-b-0 dark:border-base-800">
+                                        <td class="px-6 py-3">
+                                            <a href="{{ session.primary_url }}" class="font-medium text-primary-600 dark:text-primary-500">
+                                                {{ session.course.code }}
+                                            </a>
+                                            <div class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                                                {{ session.course.title }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            {{ session.date }} at {{ session.time }}
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            {{ session.status }}
+                                        </td>
+                                        <td class="px-6 py-3">
+                                            <div class="flex flex-wrap gap-2">
+                                                {% if session.detail_url %}
+                                                    <a href="{{ session.detail_url }}" class="text-primary-600 text-sm dark:text-primary-500">Detail</a>
+                                                {% endif %}
+                                                {% if session.qr_url %}
+                                                    <a href="{{ session.qr_url }}" class="text-primary-600 text-sm dark:text-primary-500">QR</a>
+                                                {% endif %}
+                                                {% if session.report_url %}
+                                                    <a href="{{ session.report_url }}" class="text-primary-600 text-sm dark:text-primary-500">Report</a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-6 text-center text-font-subtle-light dark:text-font-subtle-dark">
+                                            No sessions yet.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Attendance reports" %}
+                    <div class="-m-6 overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-base-200 dark:border-base-800">
+                                    <th class="px-6 py-3 text-left text-sm">Course</th>
+                                    <th class="px-6 py-3 text-left text-sm">Teacher</th>
+                                    <th class="px-6 py-3 text-left text-sm">Students</th>
+                                    <th class="px-6 py-3 text-left text-sm">Sessions</th>
+                                    <th class="px-6 py-3 text-left text-sm">Links</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in course_rows %}
+                                    <tr class="border-b border-base-200 last:border-b-0 dark:border-base-800">
+                                        <td class="px-6 py-3">
+                                            <a href="{{ course.primary_url }}" class="font-medium text-primary-600 dark:text-primary-500">
+                                                {{ course.course.code }}
+                                            </a>
+                                            <div class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                                                {{ course.course.title }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-3">{{ course.teacher }}</td>
+                                        <td class="px-6 py-3">{{ course.students }}</td>
+                                        <td class="px-6 py-3">{{ course.sessions }}</td>
+                                        <td class="px-6 py-3">
+                                            {% if course.report_url %}
+                                                <a href="{{ course.report_url }}" class="text-primary-600 text-sm dark:text-primary-500">
+                                                    Report
+                                                </a>
+                                            {% else %}
+                                                <span class="text-font-subtle-light text-sm dark:text-font-subtle-dark">Admin only</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-6 text-center text-font-subtle-light dark:text-font-subtle-dark">
+                                            No active courses yet.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endcomponent %}
+            </div>
+
+            <div class="flex flex-col gap-8">
+                {% component "unfold/components/card.html" with title="Students needing review" %}
+                    <div class="flex flex-col gap-4">
+                        {% for row in at_risk_rows %}
+                            <div class="border-b border-base-200 last:border-b-0 pb-4 last:pb-0 dark:border-base-800">
+                                <div class="font-medium text-font-important-light dark:text-font-important-dark">
+                                    {{ row.student.username }}
+                                </div>
+                                <div class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                                    {{ row.course.code }} · {{ row.total_absence_equivalent }} absence equivalent
+                                </div>
+                                <div class="text-font-subtle-light text-sm dark:text-font-subtle-dark">
+                                    {{ row.absence_hours }} absent, {{ row.late_sections }} late
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="text-font-subtle-light dark:text-font-subtle-dark">
+                                No absence equivalents yet.
+                            </p>
+                        {% endfor %}
+                    </div>
+                {% endcomponent %}
+
+                {% include "unfold/helpers/app_list_default.html" %}
+
+                {% include "unfold/helpers/history.html" %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

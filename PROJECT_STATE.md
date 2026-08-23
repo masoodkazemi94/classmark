@@ -4,7 +4,7 @@ Last updated: 2026-06-05
 
 ## Project status
 
-Status: Phase 15 polish complete
+Status: Phase 18 Unfold teacher admin dashboard complete; local PostgreSQL sample data seeded
 
 ClassPulse is a Django + PostgreSQL attendance management MVP.
 
@@ -19,6 +19,7 @@ Backend: Django 5.2
 Database: PostgreSQL via psycopg
 Test database: SQLite in memory
 Frontend: Django templates
+Admin UI: Django Unfold
 Authentication: Django custom user model
 Environment loading: python-dotenv
 QR generation: qrcode
@@ -153,6 +154,22 @@ SYSTEM
   attendance service, teacher dashboard, manual attendance view, token, QR
   display, QR scan, session closing, and report tests
 * Setup documentation and `.env.example`
+* Local `.env` created for development and local PostgreSQL migrations applied
+  to the `classpulse` database
+* Django Unfold admin UI with ClassPulse branding, Unfold `ModelAdmin`
+  integration, styled auth forms, cleaner changelists, improved filters/search,
+  status badges, and registered attendance token management
+* Development settings reload the local `.env` with override enabled so local
+  values such as `DEBUG=True` are not masked by ambient shell variables
+* Local PostgreSQL database seeded with the demo teacher, three demo students,
+  one demo course, three active enrollments, and one active sample session
+* Unfold admin index dashboard with role-aware teacher/global stats, quick
+  access cards, recent sessions, QR shortcuts, attendance report links, course
+  summaries, and students needing attendance review
+* Sample data command marks the demo teacher as staff so the teacher can sign in
+  to the admin dashboard without granting broad model permissions
+* Persian demo flow document added at `docs/demo_flow_fa.md` with frontend URL
+  list, suggested walkthrough, and screenshot checklist
 
 ## Pending feature checklist
 
@@ -505,6 +522,16 @@ QR_TOKEN_TTL_SECONDS
 LATE_THRESHOLD_MINUTES
 ```
 
+Current local development note:
+
+```text
+The ignored `.env` file points `POSTGRES_HOST` to the project-local PostgreSQL
+socket directory at `/home/masood/workspace/classmark/.postgres`.
+The project-local PostgreSQL data directory is ignored by git.
+Development settings intentionally let the local `.env` override ambient shell
+variables.
+```
+
 Default business settings:
 
 ```text
@@ -545,6 +572,22 @@ Token values use secure randomness and expire after the configurable
 Reason:
 
 This is a DIY MVP. Django templates are enough.
+
+### Decision: Use Django Unfold for admin UI
+
+Reason:
+
+The user explicitly requested Unfold. It keeps the admin inside Django's admin
+surface while providing a polished UI without adding React, Vue, or a separate
+frontend application.
+
+### Decision: Keep admin dashboard actions routed through existing teacher views
+
+Reason:
+
+QR display, manual attendance, and reports already have teacher ownership checks.
+The Unfold dashboard links to those existing views for teacher workflows instead
+of duplicating attendance or reporting behavior inside admin templates.
 
 ### Decision: Filter teacher dashboard objects by ownership
 
@@ -611,7 +654,7 @@ python manage.py test
 Last result on 2026-06-05 using `.venv/bin/python manage.py test`:
 
 ```text
-Ran 113 tests in 4.155s
+Ran 117 tests in 4.738s
 OK
 ```
 

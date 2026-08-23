@@ -1,5 +1,7 @@
 .env
 .venv/
+.postgres/
+.postgres.log
 __pycache__/
 *.py[cod]
 *.sqlite3

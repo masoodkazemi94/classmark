@@ -21,6 +21,7 @@ DEBUG = False
 ALLOWED_HOSTS = get_list_env("ALLOWED_HOSTS")
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -102,3 +103,19 @@ AUTH_USER_MODEL = "accounts.User"
 
 QR_TOKEN_TTL_SECONDS = int(os.getenv("QR_TOKEN_TTL_SECONDS", "30"))
 LATE_THRESHOLD_MINUTES = int(os.getenv("LATE_THRESHOLD_MINUTES", "5"))
+
+UNFOLD = {
+    "SITE_TITLE": "ClassPulse Admin",
+    "SITE_HEADER": "ClassPulse",
+    "SITE_SUBHEADER": "Attendance operations",
+    "SITE_SYMBOL": "school",
+    "SITE_URL": "/",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "BORDER_RADIUS": "6px",
+    "DASHBOARD_CALLBACK": "config.admin_dashboard.dashboard_callback",
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+    },
+}
