@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
+from accounts.notification_services import notify_attendance_records
+
 from .models import (
     AttendanceAuditLog,
     AttendanceRecord,
@@ -186,6 +188,7 @@ class AttendanceRecordAdmin(ModelAdmin):
             recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
             note=obj.note,
         )
+        notify_attendance_records([obj])
 
 
 @admin.register(AttendanceToken)

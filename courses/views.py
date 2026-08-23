@@ -1,22 +1,23 @@
+import calendar
+from datetime import date, datetime
+
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from accounts.decorators import course_manager_required, is_monitor, monitor_required
 from accounts.models import User
+from accounts.notification_services import notify_students_about_session
+from attendance.models import ClassSession
 
+from .access import courses_for_user
 from .forms import ClassSessionForm, CourseForm, EnrollmentForm
 from .models import Course, Enrollment
 
 
 def _accessible_courses(user):
-    courses = Course.objects.all()
-    if not is_monitor(user):
-        courses = courses.filter(
-            enrollments__student=user,
-            enrollments__is_active=True,
-        )
-    return courses.distinct()
+    return courses_for_user(user)
 
 
 def _get_accessible_course(user, course_id):
@@ -57,6 +58,84 @@ def course_create(request):
 
 
 @course_manager_required
+def session_calendar(request):
+    today = timezone.localdate()
+    try:
+        month_start = datetime.strptime(
+            request.GET.get("month", ""),
+            "%Y-%m",
+        ).date().replace(day=1)
+    except ValueError:
+        month_start = today.replace(day=1)
+
+    if month_start.month == 12:
+        next_month = date(month_start.year + 1, 1, 1)
+    else:
+        next_month = date(month_start.year, month_start.month + 1, 1)
+    if month_start.month == 1:
+        previous_month = date(month_start.year - 1, 12, 1)
+    else:
+        previous_month = date(month_start.year, month_start.month - 1, 1)
+
+    courses = _accessible_courses(request.user).order_by("code", "title")
+    selected_course = None
+    course_id = request.GET.get("course", "").strip()
+    if course_id:
+        selected_course = get_object_or_404(courses, pk=course_id)
+
+    selected_status = request.GET.get("status", "").strip()
+    if selected_status not in ClassSession.Status.values:
+        selected_status = ""
+
+    sessions = ClassSession.objects.filter(
+        course__in=courses,
+        date__gte=month_start,
+        date__lt=next_month,
+    ).select_related("course")
+    if selected_course:
+        sessions = sessions.filter(course=selected_course)
+    if selected_status:
+        sessions = sessions.filter(status=selected_status)
+
+    sessions_by_date = {}
+    for session in sessions.order_by("start_time", "course__code"):
+        sessions_by_date.setdefault(session.date, []).append(session)
+
+    month_weeks = []
+    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(
+        month_start.year,
+        month_start.month,
+    ):
+        month_weeks.append(
+            [
+                {
+                    "date": day,
+                    "in_month": day.month == month_start.month,
+                    "is_today": day == today,
+                    "sessions": sessions_by_date.get(day, []),
+                }
+                for day in week
+            ]
+        )
+
+    return render(
+        request,
+        "courses/session_calendar.html",
+        {
+            "month_start": month_start,
+            "previous_month": previous_month.strftime("%Y-%m"),
+            "next_month": next_month.strftime("%Y-%m"),
+            "today_month": today.strftime("%Y-%m"),
+            "month_weeks": month_weeks,
+            "courses": courses,
+            "selected_course": selected_course,
+            "selected_status": selected_status,
+            "session_statuses": ClassSession.Status.choices,
+        },
+    )
+
+
+@course_manager_required
 def course_detail(request, course_id):
     course = _get_accessible_course(request.user, course_id)
     enrollments = course.enrollments.filter(is_active=True).select_related("student")
@@ -80,11 +159,21 @@ def course_detail(request, course_id):
 @course_manager_required
 def session_create(request, course_id):
     course = _get_accessible_course(request.user, course_id)
-    form = ClassSessionForm(request.POST or None, course=course)
+    initial = {}
+    if request.method == "GET" and request.GET.get("date"):
+        try:
+            initial["date"] = datetime.strptime(request.GET["date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    form = ClassSessionForm(request.POST or None, course=course, initial=initial)
 
     if request.method == "POST" and form.is_valid():
         session = form.save()
-        messages.success(request, "Session created.")
+        notifications = notify_students_about_session(session=session)
+        messages.success(
+            request,
+            f"Session created. {len(notifications)} students notified.",
+        )
         return redirect("attendance:session-detail", session_id=session.pk)
 
     if request.method == "POST":

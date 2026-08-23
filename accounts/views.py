@@ -1,13 +1,16 @@
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .decorators import course_manager_required, is_monitor, monitor_required
 from .forms import PromoteCRForm, StudentCreateForm, StudentUpdateForm
-from .models import User
+from .models import Notification, User
 
 from courses.models import Course, Enrollment
 
@@ -169,3 +172,50 @@ def student_restore(request, student_id):
     student.save(update_fields=("is_active",))
     messages.success(request, f"{student.username} was restored. Assign courses as needed.")
     return redirect("accounts:student-list")
+
+
+def _require_notification_recipient(user):
+    if user.role not in {User.Role.STUDENT, User.Role.CR}:
+        raise PermissionDenied
+
+
+@login_required
+def notification_list(request):
+    _require_notification_recipient(request.user)
+    notifications = request.user.notifications.select_related(
+        "course",
+        "session",
+        "attendance_record",
+    )
+    return render(
+        request,
+        "accounts/notification_list.html",
+        {
+            "notifications": notifications,
+            "unread_count": notifications.filter(read_at__isnull=True).count(),
+        },
+    )
+
+
+@login_required
+@require_POST
+def notification_mark_read(request, notification_id):
+    _require_notification_recipient(request.user)
+    notification = get_object_or_404(
+        Notification,
+        pk=notification_id,
+        recipient=request.user,
+    )
+    notification.mark_read()
+    return redirect("accounts:notification-list")
+
+
+@login_required
+@require_POST
+def notifications_mark_all_read(request):
+    _require_notification_recipient(request.user)
+    request.user.notifications.filter(read_at__isnull=True).update(
+        read_at=timezone.now()
+    )
+    messages.success(request, "All notifications marked as read.")
+    return redirect("accounts:notification-list")

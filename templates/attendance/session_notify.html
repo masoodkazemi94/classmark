@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Send class update | ClassPulse{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{% url 'attendance:session-detail' session.pk %}">← Back to session</a>
+<div class="page-heading">
+    <span class="eyebrow">Student notification</span>
+    <h1>Send a class update</h1>
+    <p class="page-lead">Every active student enrolled in {{ session.course.code }} will receive this in their ClassPulse inbox. Students with an email address will also receive it by email.</p>
+</div>
+<section class="panel form-shell">
+    <div class="notification-preview">
+        <span class="date-tile"><strong>{{ session.date|date:"d" }}</strong><small>{{ session.date|date:"M" }}</small></span>
+        <div><strong>{{ session.course.code }} · {{ session.course.title }}</strong><small>{{ session.start_time|time:"H:i" }} · {{ session.get_status_display }}</small></div>
+    </div>
+    <form class="stack-form mt-1" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="form-actions">
+            <button type="submit">Send notification</button>
+            <a class="button button--secondary" href="{% url 'attendance:session-detail' session.pk %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

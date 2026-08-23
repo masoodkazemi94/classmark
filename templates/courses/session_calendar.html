@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Session calendar | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="page-heading page-heading--split">
+    <div>
+        <span class="eyebrow">Schedule</span>
+        <h1>Session calendar</h1>
+        <p class="page-lead">See courses and class sessions together. Filter to one course to create sessions directly from a date.</p>
+    </div>
+    <div class="page-heading__actions">
+        <a class="button button--secondary" href="?month={{ today_month }}{% if selected_course %}&course={{ selected_course.pk }}{% endif %}">Today</a>
+        {% if selected_course %}<a class="button" href="{% url 'courses:session-create' selected_course.pk %}">＋ Create session</a>{% endif %}
+    </div>
+</div>
+
+<section class="panel calendar-controls">
+    <form method="get" class="calendar-filter-form">
+        <input type="hidden" name="month" value="{{ month_start|date:'Y-m' }}">
+        <div class="field"><label for="calendar-course">Course</label><select id="calendar-course" name="course" data-searchable="true" data-placeholder="All accessible courses" data-empty-message="No matching courses"><option value="">All accessible courses</option>{% for course in courses %}<option value="{{ course.pk }}"{% if selected_course.pk == course.pk %} selected{% endif %}>{{ course.code }} · {{ course.title }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="calendar-status">Session status</label><select id="calendar-status" name="status"><option value="">All statuses</option>{% for value, label in session_statuses %}<option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <button type="submit">Apply filters</button>
+        {% if selected_course or selected_status %}<a class="button button--secondary" href="?month={{ month_start|date:'Y-m' }}">Clear</a>{% endif %}
+    </form>
+</section>
+
+<section class="panel panel--flush calendar-panel">
+    <div class="panel-header calendar-heading">
+        <a class="icon-button" href="?month={{ previous_month }}{% if selected_course %}&course={{ selected_course.pk }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" aria-label="Previous month">←</a>
+        <div><h2>{{ month_start|date:"F Y" }}</h2><p class="panel-subtitle">{% if selected_course %}{{ selected_course.code }} · {{ selected_course.title }}{% else %}All accessible courses{% endif %}</p></div>
+        <a class="icon-button" href="?month={{ next_month }}{% if selected_course %}&course={{ selected_course.pk }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" aria-label="Next month">→</a>
+    </div>
+    <div class="calendar-scroll">
+        <div class="calendar-grid calendar-weekdays"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+        {% for week in month_weeks %}<div class="calendar-grid calendar-week">
+            {% for day in week %}<div class="calendar-day{% if not day.in_month %} calendar-day--outside{% endif %}{% if day.is_today %} calendar-day--today{% endif %}">
+                <div class="calendar-day__top"><span>{{ day.date.day }}</span>{% if selected_course and day.in_month %}<a href="{% url 'courses:session-create' selected_course.pk %}?date={{ day.date|date:'Y-m-d' }}" title="Create session on {{ day.date }}" aria-label="Create session on {{ day.date }}">＋</a>{% endif %}</div>
+                <div class="calendar-events">{% for session in day.sessions %}<a class="calendar-event calendar-event--{{ session.status|lower }}" href="{% url 'attendance:session-detail' session.pk %}"><strong>{{ session.start_time|time:"H:i" }} · {{ session.course.code }}</strong><span>{{ session.get_status_display }}</span></a>{% endfor %}</div>
+            </div>{% endfor %}
+        </div>{% endfor %}
+    </div>
+</section>
+<div class="calendar-legend"><span><i class="legend-dot legend-dot--draft"></i>Draft</span><span><i class="legend-dot legend-dot--active"></i>Active</span><span><i class="legend-dot legend-dot--closed"></i>Closed</span>{% if not selected_course %}<small>Choose one course above to enable ＋ session creation on calendar dates.</small>{% endif %}</div>
+{% endblock %}

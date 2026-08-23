@@ -1,30 +1,75 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero">
-    <div class="hero__content">
-        <span class="eyebrow" style="color:#c7d2fe">Attendance, without the friction</span>
-        <h1>Every class.<br>Every section. Clear.</h1>
-        <p>ClassPulse gives your team one reliable place for course rosters, QR check-ins, manual attendance, and accountable change history.</p>
-        <div class="hero-actions">
-            {% if user.is_authenticated and user.role == "MONITOR" or user.is_authenticated and user.role == "ADMIN" or user.is_authenticated and user.role == "CR" or user.is_superuser %}
-                <a class="button button--secondary" href="{% url 'courses:course-list' %}">Open course workspace</a>
-                {% if user.role == "MONITOR" or user.role == "ADMIN" or user.is_superuser %}
-                    <a class="button" href="{% url 'courses:course-create' %}">Create a course</a>
-                {% endif %}
-            {% elif user.is_authenticated %}
-                <span class="badge badge--info">Signed in as {{ user.get_role_display }}</span>
-            {% else %}
-                <a class="button button--secondary" href="{% url 'accounts:login' %}">Sign in to ClassPulse</a>
-            {% endif %}
+{% if dashboard_mode == "public" %}
+    <section class="hero">
+        <div class="hero__content">
+            <span class="eyebrow" style="color:#c7d2fe">Attendance, without the friction</span>
+            <h1>Every class.<br>Every section. Clear.</h1>
+            <p>ClassPulse gives your team one reliable place for course rosters, QR check-ins, manual attendance, and accountable change history.</p>
+            <div class="hero-actions"><a class="button button--secondary" href="{% url 'accounts:login' %}">Sign in to ClassPulse</a></div>
+        </div>
+    </section>
+    <div class="stats-grid mt-1">
+        <article class="stat-card"><span class="stat-card__label">Structure</span><strong class="stat-card__value">3</strong><span class="text-muted">sections per session</span></article>
+        <article class="stat-card"><span class="stat-card__label">Duration</span><strong class="stat-card__value">45m</strong><span class="text-muted">per section</span></article>
+        <article class="stat-card"><span class="stat-card__label">QR security</span><strong class="stat-card__value">30s</strong><span class="text-muted">default token lifetime</span></article>
+        <article class="stat-card"><span class="stat-card__label">Accountability</span><strong class="stat-card__value">100%</strong><span class="text-muted">attendance changes logged</span></article>
+    </div>
+{% elif dashboard_mode == "management" %}
+    <div class="page-heading page-heading--split dashboard-heading">
+        <div><span class="eyebrow">{{ today|date:"l, F j" }}</span><h1>Welcome back, {{ user.first_name|default:user.username }}.</h1><p class="page-lead">Here is what is happening across {% if is_monitor_dashboard %}ClassPulse{% else %}your assigned courses{% endif %} today.</p></div>
+        <div class="page-heading__actions">
+            <a class="button button--secondary" href="{% url 'courses:session-calendar' %}">Open calendar</a>
+            {% if is_monitor_dashboard %}<a class="button" href="{% url 'courses:course-create' %}">＋ Create course</a>{% endif %}
         </div>
     </div>
-</section>
 
-<div class="stats-grid mt-1">
-    <article class="stat-card"><span class="stat-card__label">Structure</span><strong class="stat-card__value">3</strong><span class="text-muted">sections per session</span></article>
-    <article class="stat-card"><span class="stat-card__label">Duration</span><strong class="stat-card__value">45m</strong><span class="text-muted">per section</span></article>
-    <article class="stat-card"><span class="stat-card__label">QR security</span><strong class="stat-card__value">30s</strong><span class="text-muted">default token lifetime</span></article>
-    <article class="stat-card"><span class="stat-card__label">Accountability</span><strong class="stat-card__value">100%</strong><span class="text-muted">attendance changes logged</span></article>
-</div>
+    <div class="stats-grid">
+        <a class="stat-card dashboard-stat" href="{% url 'courses:course-list' %}"><span class="stat-card__label">Accessible courses</span><strong class="stat-card__value">{{ course_count }}</strong><span class="text-muted">Open workspace →</span></a>
+        <a class="stat-card dashboard-stat" href="{% url 'accounts:student-list' %}"><span class="stat-card__label">Active students</span><strong class="stat-card__value">{{ student_count }}</strong><span class="text-muted">Manage directory →</span></a>
+        <a class="stat-card dashboard-stat" href="{% url 'courses:session-calendar' %}"><span class="stat-card__label">Sessions today</span><strong class="stat-card__value">{{ today_sessions|length }}</strong><span class="text-muted">View schedule →</span></a>
+        <div class="stat-card{% if missing_attendance_count %} stat-card--warning{% endif %}"><span class="stat-card__label">Missing attendance</span><strong class="stat-card__value">{{ missing_attendance_count }}</strong><span class="text-muted">section records</span></div>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="panel panel--flush dashboard-primary">
+            <div class="panel-header"><div><h2>Today’s sessions</h2><p class="panel-subtitle">{{ today|date:"F j, Y" }}</p></div><a href="{% url 'courses:session-calendar' %}">Full calendar →</a></div>
+            {% if today_sessions %}<div class="session-list">{% for session in today_sessions %}<a class="session-list-item" href="{% url 'attendance:session-detail' session.pk %}"><span class="session-time">{{ session.start_time|time:"H:i" }}</span><span class="session-list-main"><strong>{{ session.course.code }} · {{ session.course.title }}</strong><small>{% if session.end_time %}Ends {{ session.end_time|time:"H:i" }}{% else %}3 attendance sections{% endif %}</small></span>{% if session.status == "ACTIVE" %}<span class="badge badge--active">Active</span>{% elif session.status == "CLOSED" %}<span class="badge badge--closed">Closed</span>{% else %}<span class="badge badge--draft">Draft</span>{% endif %}<span>→</span></a>{% endfor %}</div>
+            {% else %}<div class="empty-state empty-state--compact"><h2>No sessions today</h2><p>Use the calendar to review upcoming classes or create the next session.</p><a class="button button--secondary" href="{% url 'courses:session-calendar' %}">Open calendar</a></div>{% endif %}
+        </section>
+
+        <aside class="panel panel--flush">
+            <div class="panel-header"><div><h2>Needs attention</h2><p class="panel-subtitle">Active sessions with missing records</p></div></div>
+            {% if attention_sessions %}<div class="attention-list">{% for session in attention_sessions %}<a href="{% url 'attendance:session-detail' session.pk %}"><span><strong>{{ session.course.code }}</strong><small>{{ session.date|date:"M j" }} · {{ session.start_time|time:"H:i" }}</small></span><span class="badge badge--late">{{ session.missing_count }} missing</span></a>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><span class="result-icon result-icon--success"><svg viewBox="0 0 24 24"><path d="m9.2 16.2-4.4-4.4-1.6 1.6 6 6L21 7.6 19.4 6 9.2 16.2Z"/></svg></span><h2>All caught up</h2><p>No active sessions have missing attendance.</p></div>{% endif %}
+        </aside>
+
+        <section class="panel panel--flush">
+            <div class="panel-header"><div><h2>Upcoming sessions</h2><p class="panel-subtitle">Next active or draft classes</p></div></div>
+            {% if upcoming_sessions %}<div class="upcoming-list">{% for session in upcoming_sessions %}<a href="{% url 'attendance:session-detail' session.pk %}"><span class="date-tile"><strong>{{ session.date|date:"d" }}</strong><small>{{ session.date|date:"M" }}</small></span><span><strong>{{ session.course.code }}</strong><small>{{ session.start_time|time:"H:i" }} · {{ session.get_status_display }}</small></span></a>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><p>No upcoming sessions are scheduled.</p></div>{% endif %}
+        </section>
+
+        {% if is_monitor_dashboard %}<section class="panel panel--flush">
+            <div class="panel-header"><div><h2>Recent attendance activity</h2><p class="panel-subtitle">Latest manual, QR, and system inputs</p></div><a href="{% url 'attendance:audit-log' %}">Audit log →</a></div>
+            {% if recent_audit_logs %}<div class="activity-list">{% for log in recent_audit_logs %}<div><span class="mini-avatar">{{ log.student.username|first|upper }}</span><span><strong>{{ log.student.username }} · {{ log.new_status }}</strong><small>{{ log.course.code }} · Section {{ log.section.section_number }} · by {{ log.changed_by|default:"System" }}</small></span><time>{{ log.created_at|timesince }} ago</time></div>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><p>No attendance activity yet.</p></div>{% endif %}
+        </section>{% endif %}
+    </div>
+{% else %}
+    <div class="page-heading"><span class="eyebrow">{{ today|date:"l, F j" }}</span><h1>Hello, {{ user.first_name|default:user.username }}.</h1><p class="page-lead">Your courses, upcoming classes, and personal attendance in one place.</p></div>
+    <div class="stats-grid">
+        <article class="stat-card stat-card--success"><span class="stat-card__label">Present sections</span><strong class="stat-card__value">{{ student_totals.present_sections }}</strong></article>
+        <article class="stat-card stat-card--warning"><span class="stat-card__label">Late sections</span><strong class="stat-card__value">{{ student_totals.late_sections }}</strong></article>
+        <article class="stat-card stat-card--danger"><span class="stat-card__label">Absent sections</span><strong class="stat-card__value">{{ student_totals.absent_sections }}</strong></article>
+        <article class="stat-card"><span class="stat-card__label">Excused leave</span><strong class="stat-card__value">{{ student_totals.leave_sections }}</strong></article>
+    </div>
+    <div class="layout-grid">
+        <section class="panel panel--flush"><div class="panel-header"><div><h2>Upcoming classes</h2><p class="panel-subtitle">Your enrolled course schedule</p></div></div>{% if upcoming_sessions %}<div class="upcoming-list">{% for session in upcoming_sessions %}<div class="student-upcoming"><span class="date-tile"><strong>{{ session.date|date:"d" }}</strong><small>{{ session.date|date:"M" }}</small></span><span><strong>{{ session.course.code }} · {{ session.course.title }}</strong><small>{{ session.start_time|time:"H:i" }}{% if session.end_time %} — {{ session.end_time|time:"H:i" }}{% endif %}</small></span></div>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><p>No upcoming classes.</p></div>{% endif %}</section>
+        <aside class="panel panel--flush"><div class="panel-header"><div><h2>My courses</h2><p class="panel-subtitle">Active enrollments</p></div></div>{% if student_courses %}<div class="simple-list">{% for course in student_courses %}<div><span class="course-code">{{ course.code }}</span><span><strong>{{ course.title }}</strong><small>{{ course.start_date|date:"M j" }} — {{ course.end_date|date:"M j" }}</small></span></div>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><p>You are not enrolled in an active course.</p></div>{% endif %}</aside>
+    </div>
+    <section class="panel panel--flush mt-1">
+        <div class="panel-header"><div><h2>Latest notifications</h2><p class="panel-subtitle">{{ unread_notification_count }} unread updates</p></div><a href="{% url 'accounts:notification-list' %}">Open inbox →</a></div>
+        {% if recent_notifications %}<div class="notification-list notification-list--compact">{% for notification in recent_notifications %}<div class="notification-item{% if not notification.is_read %} notification-item--unread{% endif %}"><span class="notification-icon notification-icon--{{ notification.kind|lower }}">{% if notification.kind == "ATTENDANCE" %}✓{% else %}◷{% endif %}</span><div class="notification-content"><h3>{{ notification.title }}</h3><p>{{ notification.message|truncatechars:130 }}</p><div class="notification-meta"><time>{{ notification.created_at|timesince }} ago</time></div></div></div>{% endfor %}</div>{% else %}<div class="empty-state empty-state--compact"><p>No notifications yet.</p></div>{% endif %}
+    </section>
+    <section class="panel panel--flush mt-1"><div class="panel-header"><div><h2>Recent attendance</h2><p class="panel-subtitle">Your latest section records</p></div></div>{% if recent_records %}<div class="table-wrap"><table><thead><tr><th>Course</th><th>Date</th><th>Section</th><th>Status</th><th>Method</th></tr></thead><tbody>{% for record in recent_records %}<tr><td><span class="course-code">{{ record.course.code }}</span></td><td>{{ record.session.date|date:"Y-m-d" }}</td><td>Section {{ record.section.section_number }}</td><td><span class="attendance-status attendance-status--{{ record.status|lower }}">{{ record.get_status_display }}</span></td><td>{{ record.get_recorded_method_display }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state empty-state--compact"><p>No attendance has been recorded yet.</p></div>{% endif %}</section>
+{% endif %}
 {% endblock %}

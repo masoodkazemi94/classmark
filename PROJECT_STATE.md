@@ -1,6 +1,6 @@
 # PROJECT_STATE.md — ClassPulse
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Status
 
@@ -80,6 +80,20 @@ authorization boundary.
 * Monitor-only reports, student details, and summary/detail CSV exports
 * Monitor/Admin report center with searchable course selection and interactive,
   summary CSV, or detailed CSV output choices
+* Role-aware signed-in homepage for Monitor/Admin, CR, and Student workflows
+* Monitor/CR operational dashboard with metrics, today's schedule, upcoming
+  sessions, and missing-attendance attention queue
+* Monitor dashboard recent attendance activity sourced from the audit history
+* Student dashboard with enrolled courses, upcoming classes, personal totals,
+  and recent section attendance
+* Student/CR notification inbox with unread state and ownership-safe read actions
+* Automatic roster notifications when sessions are created and personal
+  notifications when attendance is entered or changed, including admin edits
+* Monitor/CR class-update composer on each accessible session
+* Environment-configured SMTP delivery with console development mode and
+  sent, failed, or skipped delivery tracking
+* Course-scoped monthly session calendar with month navigation, course/status
+  filters, direct session links, and date-prefilled session creation
 * Immutable admin presentation of attendance audit history
 * Monitor-only web audit page showing actor, old/new status, source, note, and time
 * Audit entries for successful manual, QR, system-close, and admin attendance writes
@@ -102,6 +116,7 @@ The current migrations preserve existing data:
 * `attendance.0005` imports existing attendance as an audit baseline and
   normalizes existing superusers to the `ADMIN` role.
 * `attendance.0006` allows both Student and CR users in attendance records.
+* `accounts.0004` adds durable in-app notifications and email delivery status.
 
 ## Sample data
 
@@ -134,7 +149,7 @@ python manage.py makemigrations --check --dry-run
 ## Current verification
 
 ```text
-python manage.py test: 145 tests passed
+python manage.py test: 163 tests passed
 python manage.py makemigrations --check --dry-run: no changes detected
 ```
 
@@ -142,3 +157,5 @@ python manage.py makemigrations --check --dry-run: no changes detected
 
 * This remains an MVP with simple Django templates.
 * Audit web history shows the newest 500 entries and has no filtering UI yet.
+* Email is delivered after the database commit in the web request; this MVP has
+  no background job queue. SMTP failures do not undo attendance or session data.

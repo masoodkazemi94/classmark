@@ -15,6 +15,11 @@ urlpatterns = [
     ),
     path("sessions/<int:session_id>/qr/", views.session_qr, name="session-qr"),
     path(
+        "sessions/<int:session_id>/notify/",
+        views.session_notify,
+        name="session-notify",
+    ),
+    path(
         "sessions/<int:session_id>/manual/",
         views.manual_attendance,
         name="manual-attendance",

@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -33,3 +35,68 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Notification(models.Model):
+    class Kind(models.TextChoices):
+        CLASS_SESSION = "CLASS_SESSION", "Class session"
+        ATTENDANCE = "ATTENDANCE", "Attendance status"
+
+    class EmailStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        SENT = "SENT", "Sent"
+        FAILED = "FAILED", "Failed"
+        SKIPPED = "SKIPPED", "Skipped"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        blank=True,
+        null=True,
+    )
+    session = models.ForeignKey(
+        "attendance.ClassSession",
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        blank=True,
+        null=True,
+    )
+    attendance_record = models.ForeignKey(
+        "attendance.AttendanceRecord",
+        on_delete=models.SET_NULL,
+        related_name="notifications",
+        blank=True,
+        null=True,
+    )
+    email_status = models.CharField(
+        max_length=10,
+        choices=EmailStatus.choices,
+        default=EmailStatus.PENDING,
+    )
+    email_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    @property
+    def is_read(self):
+        return self.read_at is not None
+
+    def mark_read(self):
+        if self.read_at is None:
+            self.read_at = timezone.now()
+            self.save(update_fields=("read_at",))
+
+    def __str__(self):
+        return f"{self.title} for {self.recipient}"

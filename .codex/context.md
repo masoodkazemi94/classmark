@@ -46,6 +46,18 @@ reports/     calculations, report pages, CSV exports
 Monitor/Admin report generation starts at `/reports/`, where a course and one of
 three existing outputs (interactive, summary CSV, detailed CSV) are selected.
 
+The `/` homepage is role-aware. Monitor/CR dashboards show operational metrics,
+today/upcoming sessions, and missing attendance; Monitor also sees recent audit
+activity. Students see their schedule and personal attendance. The management
+calendar is at `/courses/calendar/` and must always respect CR course scope.
+
+Students and CRs receive durable notifications at `/accounts/notifications/`.
+New sessions notify the active roster, attendance service writes notify the
+affected student, and course managers can send a custom class update from a
+session. SMTP settings come only from environment variables. Delivery runs on
+transaction commit, records sent/skipped/failed status, and must never roll back
+the related class or attendance write.
+
 Attendance writes belong in `attendance/services.py`; reports belong in
 `reports/services.py`. Views coordinate HTTP and permissions. Preserve database
 constraints and transactions.

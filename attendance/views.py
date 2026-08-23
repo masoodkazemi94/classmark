@@ -6,9 +6,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.decorators import can_access_course, course_manager_required, monitor_required
+from accounts.notification_services import notify_students_about_session
 from courses.models import Enrollment
 
-from .forms import ManualAttendanceForm
+from .forms import ManualAttendanceForm, SessionNotificationForm
 from .models import AttendanceAuditLog, AttendanceRecord, AttendanceToken, ClassSession
 from .services import (
     build_attendance_scan_url,
@@ -110,6 +111,29 @@ def session_detail(request, session_id):
         request,
         "attendance/session_detail.html",
         _session_detail_context(session=session, actor=request.user),
+    )
+
+
+@course_manager_required
+@require_http_methods(["GET", "POST"])
+def session_notify(request, session_id):
+    session = _get_accessible_session(session_id=session_id, user=request.user)
+    form = SessionNotificationForm(request.POST or None, session=session)
+    if request.method == "POST" and form.is_valid():
+        notifications = notify_students_about_session(
+            session=session,
+            title=form.cleaned_data["title"],
+            message=form.cleaned_data["message"],
+        )
+        messages.success(
+            request,
+            f"Class update created for {len(notifications)} enrolled students.",
+        )
+        return redirect("attendance:session-detail", session_id=session.pk)
+    return render(
+        request,
+        "attendance/session_notify.html",
+        {"session": session, "form": form},
     )
 
 

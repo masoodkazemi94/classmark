@@ -14,7 +14,12 @@
 {% if session.status == "ACTIVE" %}
     <div class="page-heading__actions" style="margin-bottom:1.25rem">
         <a class="button" href="{% url 'attendance:session-qr' session.pk %}">Show QR code</a>
+        <a class="button button--secondary" href="{% url 'attendance:session-notify' session.pk %}">Send class update</a>
         <form method="post" action="{% url 'attendance:session-close' session.pk %}">{% csrf_token %}<button class="button button--danger" type="submit">Close session</button></form>
+    </div>
+{% else %}
+    <div class="page-heading__actions" style="margin-bottom:1.25rem">
+        <a class="button button--secondary" href="{% url 'attendance:session-notify' session.pk %}">Send class update</a>
     </div>
 {% endif %}
 

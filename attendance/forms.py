@@ -47,3 +47,21 @@ class ManualAttendanceForm(forms.Form):
             }
         )
         self.fields["section"].queryset = session.sections.order_by("section_number")
+
+
+class SessionNotificationForm(forms.Form):
+    title = forms.CharField(max_length=200, label="Email subject")
+    message = forms.CharField(widget=forms.Textarea(attrs={"rows": 6}))
+
+    def __init__(self, *args, session, **kwargs):
+        initial = kwargs.setdefault("initial", {})
+        initial.setdefault("title", f"Class update: {session.course.code}")
+        initial.setdefault(
+            "message",
+            (
+                f"Update for {session.course.code} - {session.course.title}, "
+                f"scheduled on {session.date:%Y-%m-%d} at "
+                f"{session.start_time:%H:%M}:\n\n"
+            ),
+        )
+        super().__init__(*args, **kwargs)

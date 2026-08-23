@@ -10,6 +10,7 @@ from django.utils import timezone
 import qrcode
 
 from accounts.models import User
+from accounts.notification_services import notify_attendance_records
 from courses.models import Enrollment
 
 from .models import (
@@ -203,6 +204,7 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
     )
     status = _get_qr_attendance_status(session=token.session, scanned_at=scanned_at)
     records = []
+    created_records = []
     created_count = 0
 
     for section in sections:
@@ -220,6 +222,7 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
         records.append(record)
         if created:
             created_count += 1
+            created_records.append(record)
             _create_audit_log(
                 record=record,
                 action=AttendanceAuditLog.Action.CREATED,
@@ -228,6 +231,9 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
                 recorded_method=AttendanceRecord.RecordedMethod.QR,
                 note="",
             )
+
+    if created_records:
+        notify_attendance_records(created_records)
 
     return {
         "token": token,
@@ -303,7 +309,7 @@ def mark_student_for_section(
     _validate_session(course=course, session=session)
     _validate_section(session=session, section=section)
 
-    return _mark_attendance(
+    record = _mark_attendance(
         student=student,
         course=course,
         session=session,
@@ -313,6 +319,8 @@ def mark_student_for_section(
         recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
         note=note,
     )
+    notify_attendance_records([record])
+    return record
 
 
 @transaction.atomic
@@ -336,7 +344,7 @@ def mark_student_for_session(
     _validate_session(course=course, session=session)
     sections = _get_session_sections(session)
 
-    return [
+    records = [
         _mark_attendance(
             student=student,
             course=course,
@@ -349,6 +357,8 @@ def mark_student_for_session(
         )
         for section in sections
     ]
+    notify_attendance_records(records)
+    return records
 
 
 @transaction.atomic
@@ -384,6 +394,9 @@ def bulk_mark_missing_students_absent(*, course, session, recorded_by=None):
                     recorded_method=AttendanceRecord.RecordedMethod.SYSTEM,
                     note="Session closed; missing attendance marked absent.",
                 )
+
+    if created_records:
+        notify_attendance_records(created_records)
 
     return created_records
 
@@ -477,4 +490,5 @@ def change_attendance_record_manually(
         recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
         note=record.note,
     )
+    notify_attendance_records([record])
     return record

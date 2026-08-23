@@ -37,6 +37,8 @@ http://127.0.0.1:8000/admin/
 
 ```text
 http://127.0.0.1:8000/courses/
+http://127.0.0.1:8000/courses/calendar/
+http://127.0.0.1:8000/reports/
 http://127.0.0.1:8000/courses/<course_id>/
 http://127.0.0.1:8000/courses/<course_id>/sessions/create/
 http://127.0.0.1:8000/attendance/sessions/<session_id>/

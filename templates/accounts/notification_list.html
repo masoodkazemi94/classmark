@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="page-heading page-heading--split">
+    <div>
+        <span class="eyebrow">Student inbox</span>
+        <h1>Notifications</h1>
+        <p class="page-lead">Class schedule updates and every change to your attendance status appear here.</p>
+    </div>
+    {% if unread_count %}
+        <form method="post" action="{% url 'accounts:notifications-read-all' %}">
+            {% csrf_token %}
+            <button class="button button--secondary" type="submit">Mark all as read</button>
+        </form>
+    {% endif %}
+</div>
+
+<section class="panel panel--flush">
+    <div class="panel-header">
+        <div><h2>Your inbox</h2><p class="panel-subtitle">{{ unread_count }} unread</p></div>
+        <span class="badge badge--muted">{{ notifications|length }} total</span>
+    </div>
+    {% if notifications %}
+        <div class="notification-list">
+            {% for notification in notifications %}
+                <article class="notification-item{% if not notification.is_read %} notification-item--unread{% endif %}">
+                    <span class="notification-icon notification-icon--{{ notification.kind|lower }}" aria-hidden="true">{% if notification.kind == "ATTENDANCE" %}✓{% else %}◷{% endif %}</span>
+                    <div class="notification-content">
+                        <div class="notification-title-row"><h3>{{ notification.title }}</h3>{% if not notification.is_read %}<span class="badge badge--info">New</span>{% endif %}</div>
+                        <p>{{ notification.message|linebreaksbr }}</p>
+                        <div class="notification-meta">
+                            <time>{{ notification.created_at|date:"M j, Y · H:i" }}</time>
+                            {% if notification.course %}<span>{{ notification.course.code }}</span>{% endif %}
+                            {% if notification.email_status == "SENT" %}<span>Email sent</span>{% elif notification.email_status == "SKIPPED" %}<span>In-app only</span>{% elif notification.email_status == "FAILED" %}<span>Email unavailable</span>{% endif %}
+                        </div>
+                    </div>
+                    {% if not notification.is_read %}
+                        <form method="post" action="{% url 'accounts:notification-read' notification.pk %}">
+                            {% csrf_token %}<button class="button button--small button--secondary" type="submit">Mark read</button>
+                        </form>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state"><div class="empty-state__icon">✓</div><h2>You’re all caught up</h2><p>New class and attendance updates will appear here.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

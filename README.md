@@ -50,11 +50,40 @@ POSTGRES_PORT=5432
 
 QR_TOKEN_TTL_SECONDS=30
 LATE_THRESHOLD_MINUTES=5
+
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_TIMEOUT=10
+DEFAULT_FROM_EMAIL=ClassPulse <noreply@example.com>
 ```
 
 `QR_TOKEN_TTL_SECONDS` controls how quickly QR codes expire. The default is 30
 seconds. `LATE_THRESHOLD_MINUTES` controls when a QR scan becomes `LATE`
 instead of `PRESENT`.
+
+The console email backend is safe for local development: emails are printed in
+the terminal running Django. To send real email, use your provider's SMTP
+details in `.env`, for example:
+
+```text
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your-account@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=ClassPulse <your-account@gmail.com>
+```
+
+Use an SMTP/app password rather than your normal account password. TLS and SSL
+must not both be enabled. Keep credentials only in `.env`; never add them to
+`.env.example` or commit them.
 
 ## Database Setup
 
@@ -137,19 +166,42 @@ Monitors and Admins generate reports from `/reports/`. The report center offers
 an interactive course report, a calculated summary CSV, or a detailed raw
 attendance CSV from one searchable course selector.
 
+The signed-in homepage is role-aware:
+
+* Monitor/Admin: all-course operational dashboard, today's sessions, missing
+  attendance, upcoming sessions, and recent attendance changes.
+* CR: the same operational dashboard limited to assigned courses, without audit
+  history.
+* Student: enrolled courses, upcoming classes, personal totals, and recent
+  attendance, plus a notification inbox.
+
+Monitor/Admin and CR users have a monthly calendar at `/courses/calendar/`.
+It supports month navigation, course/status filters, session links, and
+date-prefilled session creation after selecting a course.
+
+Students and CRs have an inbox at `/accounts/notifications/`. Creating a
+session automatically announces it to the active course roster. Manual, QR,
+and session-close attendance changes also create a personal status update.
+Monitors and assigned CRs can send an additional class message from the session
+detail page. Every notification remains available in the app; email is sent
+only when the student account has an email address. SMTP errors are recorded
+without cancelling the class or attendance change.
+
 ## Basic Usage Flow
 
 1. Sign in as a Monitor or assigned CR.
 2. As a Monitor, create student accounts from the Students page.
-3. Create a course from the course workspace if needed.
-4. Open a course, assign students, and create a class session.
-5. Open the session detail page.
-6. Mark attendance manually, or open the QR page for an active session.
-7. Students sign in and scan the QR code while it is valid.
-8. Close the session to mark missing section records as `ABSENT`.
-9. As a Monitor, open the Reports page, choose a course and output, then
+3. Review today's work on the dashboard or open the session calendar.
+4. Create a course from the course workspace if needed.
+5. Open a course, assign students, and create a class session.
+6. Open the session detail page.
+7. Optionally send a class update to the active roster.
+8. Mark attendance manually, or open the QR page for an active session.
+9. Students sign in, check Notifications, and scan the QR code while it is valid.
+10. Close the session to mark missing section records as `ABSENT`.
+11. As a Monitor, open the Reports page, choose a course and output, then
    generate the report.
-10. Open the audit log when you need to review attendance changes.
+12. Open the audit log when you need to review attendance changes.
 
 Attendance is recorded per section. One session has exactly 3 sections, each
 section counts as 1 attendance hour, and every 3 `LATE` records count as 1
@@ -173,7 +225,7 @@ python manage.py makemigrations --check --dry-run
 ## Project Structure
 
 ```text
-accounts/    Roles, login/logout, CR promotion, and permission helpers
+accounts/    Roles, users, notification inbox, email delivery, and permissions
 attendance/  Sessions, attendance, QR flow, audit history, and services
 config/      Project settings, URLs, and deployment entry points
 courses/     Courses, enrollments, session form, and sample data command

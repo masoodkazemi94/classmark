@@ -23,12 +23,16 @@
                 {% if user.is_authenticated %}
                     {% if user.role == "MONITOR" or user.role == "ADMIN" or user.role == "CR" or user.is_superuser %}
                         <a href="{% url 'courses:course-list' %}">Courses</a>
+                        <a href="{% url 'courses:session-calendar' %}">Calendar</a>
                         <a href="{% url 'accounts:student-list' %}">Students</a>
                     {% endif %}
                     {% if user.role == "MONITOR" or user.role == "ADMIN" or user.is_superuser %}
                         <a href="{% url 'reports:report-center' %}">Reports</a>
                         <a href="{% url 'accounts:cr-management' %}">CR team</a>
                         <a href="{% url 'attendance:audit-log' %}">Audit log</a>
+                    {% endif %}
+                    {% if user.role == "STUDENT" or user.role == "CR" %}
+                        <a class="nav-notification-link" href="{% url 'accounts:notification-list' %}">Notifications{% if nav_unread_notification_count %}<span>{{ nav_unread_notification_count }}</span>{% endif %}</a>
                     {% endif %}
                 {% endif %}
             </nav>

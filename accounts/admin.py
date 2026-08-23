@@ -6,7 +6,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
-from .models import User
+from .models import Notification, User
 
 
 @admin.register(User)
@@ -77,3 +77,39 @@ admin.site.unregister(Group)
 @admin.register(Group)
 class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
+
+
+@admin.register(Notification)
+class NotificationAdmin(ModelAdmin):
+    list_display = (
+        "title",
+        "recipient",
+        "kind",
+        "email_status",
+        "created_at",
+        "read_at",
+    )
+    list_filter = ("kind", "email_status", "created_at")
+    search_fields = ("title", "message", "recipient__username", "recipient__email")
+    readonly_fields = (
+        "recipient",
+        "kind",
+        "title",
+        "message",
+        "course",
+        "session",
+        "attendance_record",
+        "email_status",
+        "email_error",
+        "created_at",
+        "read_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

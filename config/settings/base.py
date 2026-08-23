@@ -56,6 +56,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "accounts.context_processors.notification_summary",
             ],
         },
     },
@@ -106,6 +107,22 @@ LOGIN_REDIRECT_URL = "courses:course-list"
 
 QR_TOKEN_TTL_SECONDS = int(os.getenv("QR_TOKEN_TTL_SECONDS", "30"))
 LATE_THRESHOLD_MINUTES = int(os.getenv("LATE_THRESHOLD_MINUTES", "5"))
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = get_bool_env("EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = get_bool_env("EMAIL_USE_SSL", False)
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "ClassPulse <noreply@classpulse.local>",
+)
 
 UNFOLD = {
     "SITE_TITLE": "ClassPulse Admin",
