@@ -6,11 +6,13 @@
 <p><a href="{% url 'courses:course-list' %}">Back to courses</a></p>
 <h1>{{ course.code }} - {{ course.title }}</h1>
 <p>{{ course.start_date }} to {{ course.end_date }}</p>
-<p>
-    <a class="button" href="{% url 'reports:course-report' course.pk %}">
-        View attendance report
-    </a>
-</p>
+{% if can_view_reports %}
+    <p>
+        <a class="button" href="{% url 'reports:course-report' course.pk %}">
+            View attendance report
+        </a>
+    </p>
+{% endif %}
 
 <h2>Sessions</h2>
 <p>
@@ -46,10 +48,21 @@
 {% endif %}
 
 <h2>Enrolled students</h2>
+<form method="post" action="{% url 'courses:enrollment-add' course.pk %}">
+    {% csrf_token %}
+    {{ enrollment_form.as_p }}
+    <button type="submit">Assign student</button>
+</form>
 {% if enrollments %}
     <ul>
         {% for enrollment in enrollments %}
-            <li>{{ enrollment.student.username }}</li>
+            <li>
+                {{ enrollment.student.username }} ({{ enrollment.student.get_role_display }})
+                <form method="post" action="{% url 'courses:enrollment-remove' course.pk enrollment.pk %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Remove</button>
+                </form>
+            </li>
         {% endfor %}
     </ul>
 {% else %}

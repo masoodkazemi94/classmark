@@ -218,7 +218,7 @@ class AttendanceRecord(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="attendance_records",
-        limit_choices_to={"role": "STUDENT"},
+        limit_choices_to={"role__in": ("STUDENT", "CR")},
     )
     course = models.ForeignKey(
         Course,
@@ -309,3 +309,63 @@ class AttendanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.section}: {self.get_status_display()}"
+
+
+class AttendanceAuditLog(models.Model):
+    class Action(models.TextChoices):
+        CREATED = "CREATED", "Created"
+        UPDATED = "UPDATED", "Updated"
+
+    attendance_record = models.ForeignKey(
+        AttendanceRecord,
+        on_delete=models.SET_NULL,
+        related_name="audit_logs",
+        blank=True,
+        null=True,
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="attendance_audit_logs",
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.PROTECT,
+        related_name="attendance_audit_logs",
+    )
+    session = models.ForeignKey(
+        ClassSession,
+        on_delete=models.PROTECT,
+        related_name="attendance_audit_logs",
+    )
+    section = models.ForeignKey(
+        SessionSection,
+        on_delete=models.PROTECT,
+        related_name="attendance_audit_logs",
+    )
+    action = models.CharField(max_length=10, choices=Action.choices)
+    old_status = models.CharField(
+        max_length=10,
+        choices=AttendanceStatus.choices,
+        blank=True,
+    )
+    new_status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="attendance_changes_made",
+        blank=True,
+        null=True,
+    )
+    recorded_method = models.CharField(
+        max_length=10,
+        choices=AttendanceRecordedMethod.choices,
+    )
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "-pk")
+
+    def __str__(self):
+        return f"{self.student} {self.action} {self.old_status or '-'} -> {self.new_status}"

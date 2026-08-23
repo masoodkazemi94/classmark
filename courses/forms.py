@@ -1,7 +1,10 @@
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
 from attendance.models import ClassSession
+
+from .models import Enrollment
 
 
 class ClassSessionForm(forms.ModelForm):
@@ -33,3 +36,23 @@ class ClassSessionForm(forms.ModelForm):
         if commit:
             session.save()
         return session
+
+
+class EnrollmentForm(forms.Form):
+    student = forms.ModelChoiceField(queryset=get_user_model().objects.none())
+
+    def __init__(self, *args, course, actor, **kwargs):
+        super().__init__(*args, **kwargs)
+        roles = [get_user_model().Role.STUDENT]
+        if actor.role != get_user_model().Role.CR:
+            roles.append(get_user_model().Role.CR)
+        enrolled_ids = Enrollment.objects.filter(
+            course=course,
+            is_active=True,
+        ).values_list("student_id", flat=True)
+        self.fields["student"].queryset = (
+            get_user_model()
+            .objects.filter(role__in=roles, is_active=True)
+            .exclude(pk__in=enrolled_ids)
+            .order_by("username")
+        )

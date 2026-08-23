@@ -1,21 +1,36 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
-from accounts.decorators import teacher_required
+from accounts.decorators import course_manager_required, is_monitor
+from accounts.models import User
 
-from .forms import ClassSessionForm
-from .models import Course
+from .forms import ClassSessionForm, EnrollmentForm
+from .models import Course, Enrollment
 
 
-@teacher_required
+def _accessible_courses(user):
+    courses = Course.objects.all()
+    if not is_monitor(user):
+        courses = courses.filter(
+            enrollments__student=user,
+            enrollments__is_active=True,
+        )
+    return courses.distinct()
+
+
+def _get_accessible_course(user, course_id):
+    return get_object_or_404(_accessible_courses(user), pk=course_id)
+
+
+@course_manager_required
 def course_list(request):
-    courses = Course.objects.filter(teacher=request.user).order_by("code", "title")
+    courses = _accessible_courses(request.user).order_by("code", "title")
     return render(request, "courses/course_list.html", {"courses": courses})
 
 
-@teacher_required
+@course_manager_required
 def course_detail(request, course_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = _get_accessible_course(request.user, course_id)
     enrollments = course.enrollments.filter(is_active=True).select_related("student")
     sessions = course.sessions.order_by("-date", "-start_time")
     return render(
@@ -25,13 +40,18 @@ def course_detail(request, course_id):
             "course": course,
             "enrollments": enrollments,
             "sessions": sessions,
+            "enrollment_form": EnrollmentForm(
+                course=course,
+                actor=request.user,
+            ),
+            "can_view_reports": is_monitor(request.user),
         },
     )
 
 
-@teacher_required
+@course_manager_required
 def session_create(request, course_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = _get_accessible_course(request.user, course_id)
     form = ClassSessionForm(request.POST or None, course=course)
 
     if request.method == "POST" and form.is_valid():
@@ -47,3 +67,39 @@ def session_create(request, course_id):
         "courses/session_form.html",
         {"course": course, "form": form},
     )
+
+
+@course_manager_required
+def enrollment_add(request, course_id):
+    if request.method != "POST":
+        return redirect("courses:course-detail", course_id=course_id)
+    course = _get_accessible_course(request.user, course_id)
+    form = EnrollmentForm(request.POST, course=course, actor=request.user)
+    if form.is_valid():
+        enrollment, created = Enrollment.objects.get_or_create(
+            course=course,
+            student=form.cleaned_data["student"],
+            defaults={"is_active": True},
+        )
+        if not created:
+            enrollment.is_active = True
+            enrollment.save(update_fields=("is_active",))
+        messages.success(request, "Student assigned to the course.")
+    else:
+        messages.error(request, "Student could not be assigned.")
+    return redirect("courses:course-detail", course_id=course.pk)
+
+
+@course_manager_required
+def enrollment_remove(request, course_id, enrollment_id):
+    if request.method != "POST":
+        return redirect("courses:course-detail", course_id=course_id)
+    course = _get_accessible_course(request.user, course_id)
+    enrollment = get_object_or_404(Enrollment, pk=enrollment_id, course=course)
+    if request.user.role == User.Role.CR and enrollment.student.role == User.Role.CR:
+        messages.error(request, "A CR cannot remove another CR or themselves.")
+    else:
+        enrollment.is_active = False
+        enrollment.save(update_fields=("is_active",))
+        messages.success(request, "Student removed from the course.")
+    return redirect("courses:course-detail", course_id=course.pk)

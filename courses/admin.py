@@ -11,7 +11,7 @@ class CourseAdmin(ModelAdmin):
     list_display = (
         "code",
         "title",
-        "teacher",
+        "monitor",
         "enrolled_students",
         "session_count",
         "start_date",
@@ -19,13 +19,13 @@ class CourseAdmin(ModelAdmin):
         "active_badge",
     )
     list_filter = ("is_active", "start_date", "end_date")
-    search_fields = ("code", "title", "teacher__username")
-    list_select_related = ("teacher",)
-    autocomplete_fields = ("teacher",)
+    search_fields = ("code", "title", "monitor__username")
+    list_select_related = ("monitor",)
+    autocomplete_fields = ("monitor",)
     date_hierarchy = "start_date"
     ordering = ("code",)
     fieldsets = (
-        ("Course", {"fields": ("code", "title", "teacher", "is_active")}),
+        ("Course", {"fields": ("code", "title", "monitor", "is_active")}),
         ("Schedule", {"fields": ("start_date", "end_date")}),
     )
 

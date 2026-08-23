@@ -43,7 +43,8 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     def role_badge(self, obj):
         modifiers = {
             User.Role.ADMIN: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
-            User.Role.TEACHER: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
+            User.Role.MONITOR: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
+            User.Role.CR: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
             User.Role.STUDENT: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300",
         }
         return format_html(

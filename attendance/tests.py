@@ -24,14 +24,14 @@ class ClassSessionModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -93,7 +93,7 @@ class ClassSessionModelTests(TestCase):
         other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=self.teacher,
+            monitor=self.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -140,12 +140,12 @@ class SessionSectionModelTests(TestCase):
         user_model = get_user_model()
         teacher = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=teacher,
+            monitor=teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -187,19 +187,19 @@ class AttendanceTokenModelTests(TestCase):
         user_model = get_user_model()
         teacher = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=teacher,
+            monitor=teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=teacher,
+            monitor=teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -287,9 +287,9 @@ class AttendanceRecordModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -304,14 +304,14 @@ class AttendanceRecordModelTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -338,7 +338,7 @@ class AttendanceRecordModelTests(TestCase):
             "session": self.session,
             "section": self.section,
             "status": AttendanceRecord.Status.PRESENT,
-            "recorded_by": self.teacher,
+            "recorded_by": self.monitor,
         }
         values.update(overrides)
         return AttendanceRecord(**values)
@@ -350,7 +350,7 @@ class AttendanceRecordModelTests(TestCase):
         record.save()
 
         self.assertEqual(record.recorded_method, AttendanceRecord.RecordedMethod.MANUAL)
-        self.assertEqual(record.recorded_by, self.teacher)
+        self.assertEqual(record.recorded_by, self.monitor)
         self.assertEqual(record.note, "Marked during roll call.")
         self.assertIsNotNone(record.recorded_at)
 
@@ -361,7 +361,7 @@ class AttendanceRecordModelTests(TestCase):
             session=self.session,
             section=self.section,
             status=AttendanceRecord.Status.PRESENT,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
         )
 
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -371,7 +371,7 @@ class AttendanceRecordModelTests(TestCase):
                 session=self.session,
                 section=self.section,
                 status=AttendanceRecord.Status.LATE,
-                recorded_by=self.teacher,
+                recorded_by=self.monitor,
             )
 
     def test_invalid_status_is_rejected(self):
@@ -390,7 +390,7 @@ class AttendanceRecordModelTests(TestCase):
                 session=self.session,
                 section=self.section,
                 status="INVALID",
-                recorded_by=self.teacher,
+                recorded_by=self.monitor,
             )
 
     def test_student_must_have_active_course_enrollment(self):

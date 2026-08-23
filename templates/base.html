@@ -156,12 +156,24 @@
     <header>
         <nav>
             <a href="{% url 'home' %}">ClassPulse</a>
-            {% if user.is_authenticated and user.role == "TEACHER" %}
+            {% if user.is_authenticated and user.role == "MONITOR" or user.is_authenticated and user.role == "CR" or user.is_superuser %}
                 <a href="{% url 'courses:course-list' %}">Courses</a>
+            {% endif %}
+            {% if user.is_authenticated and user.role == "MONITOR" or user.is_superuser %}
+                <a href="{% url 'accounts:cr-management' %}">Manage CRs</a>
+                <a href="{% url 'attendance:audit-log' %}">Audit log</a>
             {% endif %}
         </nav>
         {% if user.is_authenticated %}
-            <span>Signed in as {{ user.username }}</span>
+            <span>
+                Signed in as {{ user.username }} ({{ user.get_role_display }})
+                <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Sign out</button>
+                </form>
+            </span>
+        {% else %}
+            <a href="{% url 'accounts:login' %}">Sign in</a>
         {% endif %}
     </header>
     <main>

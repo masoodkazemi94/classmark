@@ -17,14 +17,14 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         user_model = get_user_model()
-        teacher = self._get_or_create_teacher(user_model)
+        monitor = self._get_or_create_monitor(user_model)
         students = self._get_or_create_students(user_model)
-        course = self._get_or_create_course(teacher)
+        course = self._get_or_create_course(monitor)
         enrollments = self._enroll_students(course, students)
         session = self._get_or_create_session(course)
 
         self.stdout.write(self.style.SUCCESS("Sample data is ready."))
-        self.stdout.write(f"Teacher username: {teacher.username}")
+        self.stdout.write(f"Monitor username: {monitor.username}")
         student_usernames = ", ".join(student.username for student in students)
         self.stdout.write(f"Student usernames: {student_usernames}")
         self.stdout.write(f"Password for sample users: {SAMPLE_PASSWORD}")
@@ -35,30 +35,30 @@ class Command(BaseCommand):
             f"({session.sections.count()} sections)"
         )
 
-    def _get_or_create_teacher(self, user_model):
-        teacher, created = user_model.objects.get_or_create(
-            username="sample_teacher",
+    def _get_or_create_monitor(self, user_model):
+        monitor, created = user_model.objects.get_or_create(
+            username="sample_monitor",
             defaults={
-                "email": "teacher@example.com",
+                "email": "monitor@example.com",
                 "first_name": "Sample",
-                "last_name": "Teacher",
-                "role": user_model.Role.TEACHER,
+                "last_name": "Monitor",
+                "role": user_model.Role.MONITOR,
                 "is_staff": True,
             },
         )
         if created:
-            teacher.set_password(SAMPLE_PASSWORD)
-            teacher.save(update_fields=("password",))
+            monitor.set_password(SAMPLE_PASSWORD)
+            monitor.save(update_fields=("password",))
         changed_fields = []
-        if teacher.role != user_model.Role.TEACHER:
-            teacher.role = user_model.Role.TEACHER
+        if monitor.role != user_model.Role.MONITOR:
+            monitor.role = user_model.Role.MONITOR
             changed_fields.append("role")
-        if not teacher.is_staff:
-            teacher.is_staff = True
+        if not monitor.is_staff:
+            monitor.is_staff = True
             changed_fields.append("is_staff")
         if changed_fields:
-            teacher.save(update_fields=changed_fields)
-        return teacher
+            monitor.save(update_fields=changed_fields)
+        return monitor
 
     def _get_or_create_students(self, user_model):
         students = []
@@ -84,7 +84,10 @@ class Command(BaseCommand):
                 student.set_password(SAMPLE_PASSWORD)
                 student.save(update_fields=("password",))
             else:
-                if student.role != user_model.Role.STUDENT:
+                if student.role not in {
+                    user_model.Role.STUDENT,
+                    user_model.Role.CR,
+                }:
                     student.role = user_model.Role.STUDENT
                     changed_fields.append("role")
                 if student.student_code != student_code:
@@ -96,9 +99,9 @@ class Command(BaseCommand):
 
         return students
 
-    def _get_or_create_course(self, teacher):
+    def _get_or_create_course(self, monitor):
         course, created = Course.objects.get_or_create(
-            teacher=teacher,
+            monitor=monitor,
             code="DEMO-101",
             defaults={
                 "title": "Sample Attendance Course",

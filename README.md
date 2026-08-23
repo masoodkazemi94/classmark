@@ -1,9 +1,9 @@
 # ClassPulse
 
-ClassPulse is a small Django classroom attendance MVP. It helps a teacher manage
-courses, enroll students, create class sessions, mark attendance for each of the
-3 fixed session sections, show short-lived QR codes, close sessions, and review
-absence reports.
+ClassPulse is a small Django classroom attendance MVP. Monitors manage every
+course, promote students to CR assistants, review reports and audit history.
+CRs manage their assigned courses, enroll students, create sessions, mark
+attendance, show short-lived QR codes, and close sessions.
 
 The app is intentionally simple: Django templates, Django forms, Django Unfold
 for the admin UI, PostgreSQL for normal development, and Django tests.
@@ -83,7 +83,7 @@ Optional sample data for trying the app locally:
 python manage.py seed_sample_data
 ```
 
-The sample command creates one teacher, three students, one course, active
+The sample command creates one Monitor, three students, one course, active
 enrollments, and one active sample session. It can be run more than once without
 duplicating the sample records.
 
@@ -98,30 +98,42 @@ python manage.py runserver
 Open `http://127.0.0.1:8000/`.
 
 Open `http://127.0.0.1:8000/admin/` for the Unfold-powered Django admin.
-The admin home page includes a ClassPulse dashboard with teacher shortcuts for
+The admin home page includes a ClassPulse dashboard with Monitor shortcuts for
 courses, sessions, QR check-in, and attendance reports.
 
 Sample login data created by `seed_sample_data`:
 
 ```text
-Teacher: sample_teacher
+Monitor: sample_monitor
 Students: sample_student_1, sample_student_2, sample_student_3
 Password: classpulse123
 ```
 
-The sample teacher is marked as staff so they can sign in to `/admin/` and use
-the teacher dashboard.
+The sample Monitor is marked as staff so they can sign in to `/admin/` and use
+the Monitor dashboard. All users can sign in through `/accounts/login/`.
+
+Roles and permissions:
+
+```text
+ADMIN    Full administrative access
+MONITOR  Access to every course, reports, CR promotion, and audit history
+CR       Access to assigned courses; sessions, QR, enrollment, and attendance
+STUDENT  QR attendance for courses where the student is actively enrolled
+```
+
+A CR may edit ordinary students and their own attendance, but cannot edit or
+remove another CR. CRs cannot open reports or the attendance audit log.
 
 ## Basic Usage Flow
 
-1. Sign in as a teacher.
+1. Sign in as a Monitor or assigned CR.
 2. Open the course list and select a course.
 3. Create a class session if needed.
 4. Open the session detail page.
 5. Mark attendance manually, or open the QR page for an active session.
 6. Students sign in and scan the QR code while it is valid.
 7. Close the session to mark missing section records as `ABSENT`.
-8. Open the course report to review totals or export CSV files.
+8. As a Monitor, open the course report or audit log to review activity.
 
 Attendance is recorded per section. One session has exactly 3 sections, each
 section counts as 1 attendance hour, and every 3 `LATE` records count as 1
@@ -145,8 +157,8 @@ python manage.py makemigrations --check --dry-run
 ## Project Structure
 
 ```text
-accounts/    Custom user model and teacher-only view decorator
-attendance/  Sessions, sections, attendance records, QR flow, and services
+accounts/    Roles, login/logout, CR promotion, and permission helpers
+attendance/  Sessions, attendance, QR flow, audit history, and services
 config/      Project settings, URLs, and deployment entry points
 courses/     Courses, enrollments, session form, and sample data command
 reports/     Attendance report services, views, and CSV exports

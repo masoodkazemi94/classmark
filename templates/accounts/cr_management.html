@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}CR management | ClassPulse{% endblock %}
+
+{% block content %}
+<h1>CR management</h1>
+<p>Promote an existing student to CR. Assign the CR to courses from each course page.</p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Promote to CR</button>
+</form>
+
+<h2>Current CR users</h2>
+<ul>
+    {% for cr in cr_users %}
+        <li>{{ cr.username }} ({{ cr.student_code }})</li>
+    {% empty %}
+        <li>No CR users have been created.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

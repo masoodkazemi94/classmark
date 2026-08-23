@@ -9,16 +9,34 @@ from django.utils import timezone
 
 import qrcode
 
+from accounts.models import User
 from courses.models import Enrollment
 
 from .models import (
     SESSION_SECTION_COUNT,
+    AttendanceAuditLog,
     AttendanceRecord,
     AttendanceStatus,
     AttendanceToken,
     ClassSession,
     SessionSection,
 )
+
+
+def _create_audit_log(*, record, action, old_status, changed_by, recorded_method, note):
+    return AttendanceAuditLog.objects.create(
+        attendance_record=record,
+        student=record.student,
+        course=record.course,
+        session=record.session,
+        section=record.section,
+        action=action,
+        old_status=old_status,
+        new_status=record.status,
+        changed_by=changed_by,
+        recorded_method=recorded_method,
+        note=note,
+    )
 
 
 def _validate_status(status):
@@ -38,6 +56,16 @@ def _validate_enrollment(*, student, course):
     ):
         raise ValidationError(
             {"student": "Student must be actively enrolled in the course."}
+        )
+
+
+def _validate_manual_actor(*, student, course, recorded_by):
+    if not recorded_by or recorded_by.role != User.Role.CR:
+        return
+    _validate_enrollment(student=recorded_by, course=course)
+    if student.role == User.Role.CR and student.pk != recorded_by.pk:
+        raise ValidationError(
+            {"student": "A CR cannot change another CR's attendance."}
         )
 
 
@@ -136,7 +164,7 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
         raise ValidationError(
             {
                 "token": (
-                    "This QR code is invalid. Please ask your teacher for a new "
+                    "This QR code is invalid. Please ask your CR or monitor for a new "
                     "QR code."
                 )
             }
@@ -148,7 +176,7 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
         raise ValidationError(
             {
                 "token": (
-                    "This QR code is no longer active. Please ask your teacher "
+                    "This QR code is no longer active. Please ask your CR or monitor "
                     "for a new QR code."
                 )
             }
@@ -158,7 +186,7 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
         raise ValidationError(
             {
                 "token": (
-                    "This QR code has expired. Please ask your teacher for a new "
+                    "This QR code has expired. Please ask your CR or monitor for a new "
                     "QR code."
                 )
             }
@@ -192,6 +220,14 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
         records.append(record)
         if created:
             created_count += 1
+            _create_audit_log(
+                record=record,
+                action=AttendanceAuditLog.Action.CREATED,
+                old_status="",
+                changed_by=student,
+                recorded_method=AttendanceRecord.RecordedMethod.QR,
+                note="",
+            )
 
     return {
         "token": token,
@@ -213,7 +249,12 @@ def _mark_attendance(
     recorded_method,
     note,
 ):
-    record, _ = AttendanceRecord.objects.update_or_create(
+    existing = AttendanceRecord.objects.select_for_update().filter(
+        student=student,
+        section=section,
+    ).first()
+    old_status = existing.status if existing else ""
+    record, created = AttendanceRecord.objects.update_or_create(
         student=student,
         section=section,
         defaults={
@@ -225,9 +266,22 @@ def _mark_attendance(
             "note": note,
         },
     )
+    _create_audit_log(
+        record=record,
+        action=(
+            AttendanceAuditLog.Action.CREATED
+            if created
+            else AttendanceAuditLog.Action.UPDATED
+        ),
+        old_status=old_status,
+        changed_by=recorded_by,
+        recorded_method=recorded_method,
+        note=note,
+    )
     return record
 
 
+@transaction.atomic
 def mark_student_for_section(
     *,
     student,
@@ -241,6 +295,11 @@ def mark_student_for_section(
     """Create or update one student's manual attendance for one section."""
     _validate_status(status)
     _validate_enrollment(student=student, course=course)
+    _validate_manual_actor(
+        student=student,
+        course=course,
+        recorded_by=recorded_by,
+    )
     _validate_session(course=course, session=session)
     _validate_section(session=session, section=section)
 
@@ -269,6 +328,11 @@ def mark_student_for_session(
     """Create or update one student's manual attendance for all three sections."""
     _validate_status(status)
     _validate_enrollment(student=student, course=course)
+    _validate_manual_actor(
+        student=student,
+        course=course,
+        recorded_by=recorded_by,
+    )
     _validate_session(course=course, session=session)
     sections = _get_session_sections(session)
 
@@ -312,6 +376,14 @@ def bulk_mark_missing_students_absent(*, course, session, recorded_by=None):
             )
             if created:
                 created_records.append(record)
+                _create_audit_log(
+                    record=record,
+                    action=AttendanceAuditLog.Action.CREATED,
+                    old_status="",
+                    changed_by=recorded_by,
+                    recorded_method=AttendanceRecord.RecordedMethod.SYSTEM,
+                    note="Session closed; missing attendance marked absent.",
+                )
 
     return created_records
 
@@ -381,6 +453,12 @@ def change_attendance_record_manually(
     _validate_session(course=record.course, session=record.session)
     _validate_section(session=record.session, section=record.section)
 
+    _validate_manual_actor(
+        student=record.student,
+        course=record.course,
+        recorded_by=recorded_by,
+    )
+    old_status = record.status
     record.status = status
     record.recorded_by = recorded_by
     record.recorded_method = AttendanceRecord.RecordedMethod.MANUAL
@@ -390,5 +468,13 @@ def change_attendance_record_manually(
     record.full_clean()
     record.save(
         update_fields=("status", "recorded_by", "recorded_method", "note")
+    )
+    _create_audit_log(
+        record=record,
+        action=AttendanceAuditLog.Action.UPDATED,
+        old_status=old_status,
+        changed_by=recorded_by,
+        recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
+        note=record.note,
     )
     return record

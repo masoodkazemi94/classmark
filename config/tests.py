@@ -79,24 +79,24 @@ class AdminCustomizationTests(TestCase):
         teacher = user_model.objects.create_user(
             username="teacher-admin",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
             is_staff=True,
         )
         other_teacher = user_model.objects.create_user(
             username="other-teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         owned_course = Course.objects.create(
             title="Owned Attendance",
             code="OWN-101",
-            teacher=teacher,
+            monitor=teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         Course.objects.create(
             title="Other Attendance",
             code="OTHER-101",
-            teacher=other_teacher,
+            monitor=other_teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -111,11 +111,11 @@ class AdminCustomizationTests(TestCase):
         response = self.client.get(reverse("admin:index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Teacher dashboard")
+        self.assertContains(response, "Monitor dashboard")
         self.assertContains(response, "Quick access")
         self.assertContains(response, "OWN-101")
         self.assertContains(response, "Course workspace")
         self.assertContains(response, "Show QR code")
         self.assertContains(response, "Attendance report")
         self.assertNotContains(response, "Admin courses")
-        self.assertNotContains(response, "OTHER-101")
+        self.assertContains(response, "OTHER-101")

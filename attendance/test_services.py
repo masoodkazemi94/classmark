@@ -28,9 +28,9 @@ class AttendanceServiceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -50,14 +50,14 @@ class AttendanceServiceTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -83,12 +83,12 @@ class AttendanceServiceTests(TestCase):
             session=self.session,
             section=self.section,
             status=AttendanceRecord.Status.PRESENT,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
             note="Marked during roll call.",
         )
 
         self.assertEqual(record.status, AttendanceRecord.Status.PRESENT)
-        self.assertEqual(record.recorded_by, self.teacher)
+        self.assertEqual(record.recorded_by, self.monitor)
         self.assertEqual(record.recorded_method, AttendanceRecord.RecordedMethod.MANUAL)
         self.assertEqual(record.note, "Marked during roll call.")
 
@@ -164,7 +164,7 @@ class AttendanceServiceTests(TestCase):
             session=self.session,
             section=self.section,
             status=AttendanceRecord.Status.LATE,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
         )
 
         self.assertEqual(record.pk, existing_record.pk)
@@ -202,7 +202,7 @@ class AttendanceServiceTests(TestCase):
                 "session": self.session,
                 "section": self.section,
                 "status": AttendanceRecord.Status.PRESENT,
-                "recorded_by": self.teacher,
+                "recorded_by": self.monitor,
             }
             values.update(overrides)
 
@@ -218,7 +218,7 @@ class AttendanceServiceTests(TestCase):
             course=self.course,
             session=self.session,
             status=AttendanceRecord.Status.LEAVE,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
             note="Approved leave.",
         )
 
@@ -260,7 +260,7 @@ class AttendanceServiceTests(TestCase):
                     course=self.course,
                     session=self.session,
                     status=AttendanceRecord.Status.PRESENT,
-                    recorded_by=self.teacher,
+                    recorded_by=self.monitor,
                 )
 
         self.assertFalse(AttendanceRecord.objects.filter(student=self.student).exists())
@@ -272,7 +272,7 @@ class AttendanceServiceTests(TestCase):
             session=self.session,
             section=self.section,
             status=AttendanceRecord.Status.PRESENT,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
         )
         Enrollment.objects.create(
             course=self.course,
@@ -283,7 +283,7 @@ class AttendanceServiceTests(TestCase):
         created_records = bulk_mark_missing_students_absent(
             course=self.course,
             session=self.session,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
         )
 
         existing_record.refresh_from_db()
@@ -338,7 +338,7 @@ class AttendanceServiceTests(TestCase):
         self.session.status = ClassSession.Status.ACTIVE
         self.session.save(update_fields=("status",))
 
-        result = close_session(session=self.session, closed_by=self.teacher)
+        result = close_session(session=self.session, closed_by=self.monitor)
 
         self.session.refresh_from_db()
         self.assertEqual(self.session.status, ClassSession.Status.CLOSED)
@@ -349,12 +349,12 @@ class AttendanceServiceTests(TestCase):
             AttendanceRecord.objects.filter(
                 status=AttendanceRecord.Status.ABSENT,
                 recorded_method=AttendanceRecord.RecordedMethod.SYSTEM,
-                recorded_by=self.teacher,
+                recorded_by=self.monitor,
             ).count(),
             6,
         )
 
-        second_result = close_session(session=self.session, closed_by=self.teacher)
+        second_result = close_session(session=self.session, closed_by=self.monitor)
 
         self.assertTrue(second_result["already_closed"])
         self.assertEqual(second_result["created_records"], [])
@@ -376,11 +376,11 @@ class AttendanceServiceTests(TestCase):
                 session=self.session,
                 section=section,
                 status=status,
-                recorded_by=self.teacher,
+                recorded_by=self.monitor,
                 recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
             )
 
-        result = close_session(session=self.session, closed_by=self.teacher)
+        result = close_session(session=self.session, closed_by=self.monitor)
 
         self.assertEqual(len(result["created_records"]), 3)
         self.assertEqual(
@@ -407,7 +407,7 @@ class AttendanceServiceTests(TestCase):
 
     def test_close_session_rejects_non_active_session(self):
         with self.assertRaises(ValidationError) as context:
-            close_session(session=self.session, closed_by=self.teacher)
+            close_session(session=self.session, closed_by=self.monitor)
 
         self.assertIn("status", context.exception.message_dict)
         self.session.refresh_from_db()
@@ -428,13 +428,13 @@ class AttendanceServiceTests(TestCase):
         changed_record = change_attendance_record_manually(
             record=record,
             status=AttendanceRecord.Status.LEAVE,
-            recorded_by=self.teacher,
+            recorded_by=self.monitor,
             note="Excuse approved.",
         )
 
         self.assertEqual(changed_record.pk, record.pk)
         self.assertEqual(changed_record.status, AttendanceRecord.Status.LEAVE)
-        self.assertEqual(changed_record.recorded_by, self.teacher)
+        self.assertEqual(changed_record.recorded_by, self.monitor)
         self.assertEqual(
             changed_record.recorded_method,
             AttendanceRecord.RecordedMethod.MANUAL,

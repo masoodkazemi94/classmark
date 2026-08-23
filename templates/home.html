@@ -2,7 +2,7 @@
 
 {% block content %}
 <h1>ClassPulse</h1>
-{% if user.is_authenticated and user.role == "TEACHER" %}
+{% if user.is_authenticated and user.role == "MONITOR" or user.is_authenticated and user.role == "CR" or user.is_superuser %}
     <p><a class="button" href="{% url 'courses:course-list' %}">Open courses</a></p>
 {% else %}
     <p>Classroom attendance for section-based sessions.</p>

@@ -5,6 +5,7 @@ from . import views
 app_name = "attendance"
 
 urlpatterns = [
+    path("audit/", views.audit_log, name="audit-log"),
     path("scan/<str:token>/", views.scan_attendance, name="scan-attendance"),
     path("sessions/<int:session_id>/", views.session_detail, name="session-detail"),
     path(

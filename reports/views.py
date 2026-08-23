@@ -3,7 +3,7 @@ import csv
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from accounts.decorators import teacher_required
+from accounts.decorators import monitor_required
 from courses.models import Course, Enrollment
 
 from .services import (
@@ -46,9 +46,9 @@ def _csv_response(filename):
     return response
 
 
-@teacher_required
+@monitor_required
 def course_report(request, course_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = get_object_or_404(Course, pk=course_id)
 
     return render(
         request,
@@ -60,9 +60,9 @@ def course_report(request, course_id):
     )
 
 
-@teacher_required
+@monitor_required
 def course_report_csv(request, course_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = get_object_or_404(Course, pk=course_id)
     response = _csv_response(f"course-{course.pk}-attendance-report.csv")
     writer = csv.writer(response)
 
@@ -86,9 +86,9 @@ def course_report_csv(request, course_id):
     return response
 
 
-@teacher_required
+@monitor_required
 def course_attendance_records_csv(request, course_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = get_object_or_404(Course, pk=course_id)
     response = _csv_response(f"course-{course.pk}-attendance-details.csv")
     writer = csv.writer(response)
 
@@ -109,9 +109,9 @@ def course_attendance_records_csv(request, course_id):
     return response
 
 
-@teacher_required
+@monitor_required
 def student_report_detail(request, course_id, student_id):
-    course = get_object_or_404(Course, pk=course_id, teacher=request.user)
+    course = get_object_or_404(Course, pk=course_id)
     enrollment = get_object_or_404(
         Enrollment.objects.select_related("student"),
         course=course,

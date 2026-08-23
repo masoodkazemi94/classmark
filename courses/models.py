@@ -7,11 +7,11 @@ from django.db.models import F, Q
 class Course(models.Model):
     title = models.CharField(max_length=200)
     code = models.CharField(max_length=50)
-    teacher = models.ForeignKey(
+    monitor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="courses_taught",
-        limit_choices_to={"role": "TEACHER"},
+        related_name="courses_created",
+        limit_choices_to={"role": "MONITOR"},
     )
     start_date = models.DateField()
     end_date = models.DateField()
@@ -28,9 +28,9 @@ class Course(models.Model):
     def clean(self):
         super().clean()
 
-        if self.teacher_id and self.teacher.role != self.teacher.Role.TEACHER:
+        if self.monitor_id and self.monitor.role != self.monitor.Role.MONITOR:
             raise ValidationError(
-                {"teacher": "Only users with the teacher role can own a course."}
+                {"monitor": "Only users with the monitor role can create a course."}
             )
 
         if self.start_date and self.end_date and self.end_date < self.start_date:
@@ -52,7 +52,7 @@ class Enrollment(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="course_enrollments",
-        limit_choices_to={"role": "STUDENT"},
+        limit_choices_to={"role__in": ("STUDENT", "CR")},
     )
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
@@ -68,9 +68,12 @@ class Enrollment(models.Model):
     def clean(self):
         super().clean()
 
-        if self.student_id and self.student.role != self.student.Role.STUDENT:
+        if self.student_id and self.student.role not in {
+            self.student.Role.STUDENT,
+            self.student.Role.CR,
+        }:
             raise ValidationError(
-                {"student": "Only users with the student role can be enrolled."}
+                {"student": "Only students and CR users can be enrolled."}
             )
 
     def __str__(self):

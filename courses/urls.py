@@ -12,4 +12,10 @@ urlpatterns = [
         views.session_create,
         name="session-create",
     ),
+    path("<int:course_id>/enrollments/add/", views.enrollment_add, name="enrollment-add"),
+    path(
+        "<int:course_id>/enrollments/<int:enrollment_id>/remove/",
+        views.enrollment_remove,
+        name="enrollment-remove",
+    ),
 ]

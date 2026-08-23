@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance audit log | ClassPulse{% endblock %}
+
+{% block content %}
+<h1>Attendance audit log</h1>
+<p>This history is visible only to Monitors and Admins.</p>
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Course/session</th>
+            <th>Student/section</th>
+            <th>Change</th>
+            <th>Changed by</th>
+            <th>Method</th>
+            <th>Note</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in audit_logs %}
+            <tr>
+                <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                <td>{{ log.course.code }} / {{ log.session.date|date:"Y-m-d" }}</td>
+                <td>{{ log.student.username }} / Section {{ log.section.section_number }}</td>
+                <td>{{ log.old_status|default:"—" }} → {{ log.new_status }} ({{ log.get_action_display }})</td>
+                <td>{{ log.changed_by|default:"System" }}</td>
+                <td>{{ log.get_recorded_method_display }}</td>
+                <td>{{ log.note|default:"—" }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7">No attendance changes have been logged yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

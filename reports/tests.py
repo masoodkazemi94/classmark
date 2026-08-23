@@ -20,13 +20,13 @@ class ReportServiceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.other_teacher = user_model.objects.create_user(
             username="other-teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -46,14 +46,14 @@ class ReportServiceTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=cls.other_teacher,
+            monitor=cls.other_teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -102,7 +102,7 @@ class ReportServiceTests(TestCase):
                 session=section.session,
                 section=section,
                 status=status,
-                recorded_by=cls.teacher,
+                recorded_by=cls.monitor,
             )
 
         AttendanceRecord.objects.create(
@@ -194,15 +194,15 @@ class ReportViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.other_teacher = user_model.objects.create_user(
             username="other-teacher",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -215,14 +215,14 @@ class ReportViewTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=cls.other_teacher,
+            monitor=cls.other_teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -259,7 +259,7 @@ class ReportViewTests(TestCase):
                     session=session,
                     section=section,
                     status=status,
-                    recorded_by=cls.teacher,
+                    recorded_by=cls.monitor,
                     note=note,
                 )
 
@@ -287,7 +287,7 @@ class ReportViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_teacher_can_view_owned_course_report(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("reports:course-report", args=[self.course.pk])
@@ -300,17 +300,17 @@ class ReportViewTests(TestCase):
         self.assertContains(response, "Late-equivalent absences")
         self.assertContains(response, "1")
 
-    def test_other_teacher_cannot_view_course_report(self):
+    def test_other_monitor_can_view_course_report(self):
         self.client.force_login(self.other_teacher)
 
         response = self.client.get(
             reverse("reports:course-report", args=[self.course.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_teacher_can_export_course_report_csv(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("reports:course-report-csv", args=[self.course.pk])
@@ -341,7 +341,7 @@ class ReportViewTests(TestCase):
         )
 
     def test_teacher_can_export_detailed_attendance_csv(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("reports:course-attendance-records-csv", args=[self.course.pk])
@@ -408,7 +408,7 @@ class ReportViewTests(TestCase):
                     fetch_redirect_response=False,
                 )
 
-    def test_other_teacher_cannot_export_course_report_csv(self):
+    def test_other_monitor_can_export_course_report_csv(self):
         self.client.force_login(self.other_teacher)
 
         for url_name in (
@@ -418,10 +418,10 @@ class ReportViewTests(TestCase):
             with self.subTest(url_name=url_name):
                 response = self.client.get(reverse(url_name, args=[self.course.pk]))
 
-                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.status_code, 200)
 
     def test_teacher_can_view_student_report_detail(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse(
@@ -449,7 +449,7 @@ class ReportViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_teacher_cannot_view_student_detail_for_another_teachers_course(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse(

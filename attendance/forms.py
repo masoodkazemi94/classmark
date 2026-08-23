@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 from .models import AttendanceStatus, SessionSection
 
@@ -23,14 +24,18 @@ class ManualAttendanceForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 2}),
     )
 
-    def __init__(self, *args, session, **kwargs):
+    def __init__(self, *args, session, actor=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["student"].queryset = (
+        students = (
             get_user_model()
             .objects.filter(
                 course_enrollments__course=session.course,
                 course_enrollments__is_active=True,
             )
-            .order_by("username")
         )
+        if actor and actor.role == get_user_model().Role.CR:
+            students = students.filter(
+                Q(role=get_user_model().Role.STUDENT) | Q(pk=actor.pk)
+            )
+        self.fields["student"].queryset = students.order_by("username")
         self.fields["section"].queryset = session.sections.order_by("section_number")

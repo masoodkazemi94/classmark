@@ -13,6 +13,10 @@ from courses.models import Course, Enrollment
 from reports.services import get_course_report
 
 
+def _has_monitor_access(user):
+    return user.is_superuser or user.role in {User.Role.ADMIN, User.Role.MONITOR}
+
+
 def _admin_url(model, action="changelist", obj=None):
     app_label = model._meta.app_label
     model_name = model._meta.model_name
@@ -21,11 +25,9 @@ def _admin_url(model, action="changelist", obj=None):
     return reverse(f"admin:{app_label}_{model_name}_{action}", args=[obj.pk])
 
 
-def _teacher_courses(user):
+def _monitor_courses(user):
     queryset = Course.objects.filter(is_active=True)
-    if user.role == User.Role.TEACHER and not user.is_superuser:
-        queryset = queryset.filter(teacher=user)
-    return queryset.select_related("teacher").order_by("code", "title")
+    return queryset.select_related("monitor").order_by("code", "title")
 
 
 def _stat_cards(courses, sessions, active_tokens, missing_records):
@@ -86,11 +88,11 @@ def _missing_attendance_count(courses, active_sessions):
 def _quick_links(user, courses, sessions):
     links = []
 
-    if user.role == User.Role.TEACHER:
+    if _has_monitor_access(user):
         links.append(
             {
-                "title": "Teacher courses",
-                "description": "Open your teacher course workspace.",
+                "title": "Monitor courses",
+                "description": "Open the monitor course workspace.",
                 "icon": "dashboard",
                 "url": reverse("courses:course-list"),
             }
@@ -125,7 +127,7 @@ def _quick_links(user, courses, sessions):
         )
 
     first_course = courses.first()
-    if first_course and user.role == User.Role.TEACHER:
+    if first_course and _has_monitor_access(user):
         links.extend(
             [
                 {
@@ -150,7 +152,7 @@ def _quick_links(user, courses, sessions):
         )
 
     first_active_session = sessions.filter(status=ClassSession.Status.ACTIVE).first()
-    if first_active_session and user.role == User.Role.TEACHER:
+    if first_active_session and _has_monitor_access(user):
         links.extend(
             [
                 {
@@ -193,7 +195,7 @@ def _session_rows(user, sessions):
             "qr_url": "",
             "report_url": "",
         }
-        if user.role == User.Role.TEACHER:
+        if _has_monitor_access(user):
             row["detail_url"] = reverse("attendance:session-detail", args=[session.pk])
             row["primary_url"] = row["detail_url"]
             row["report_url"] = reverse(
@@ -212,7 +214,7 @@ def _course_rows(user, courses):
         rows.append(
             {
                 "course": course,
-                "teacher": course.teacher,
+                "monitor": course.monitor,
                 "students": Enrollment.objects.filter(
                     course=course,
                     is_active=True,
@@ -221,12 +223,12 @@ def _course_rows(user, courses):
                 "admin_url": _admin_url(Course, "change", course),
                 "primary_url": (
                     reverse("courses:course-detail", args=[course.pk])
-                    if user.role == User.Role.TEACHER
+                    if _has_monitor_access(user)
                     else _admin_url(Course, "change", course)
                 ),
                 "report_url": (
                     reverse("reports:course-report", args=[course.pk])
-                    if user.role == User.Role.TEACHER
+                    if _has_monitor_access(user)
                     else ""
                 ),
             }
@@ -263,10 +265,10 @@ def _at_risk_rows(courses):
 
 def dashboard_callback(request, context):
     user = request.user
-    courses = _teacher_courses(user)
+    courses = _monitor_courses(user)
     sessions = (
         ClassSession.objects.filter(course__in=courses)
-        .select_related("course", "course__teacher")
+        .select_related("course", "course__monitor")
         .order_by("-date", "-start_time")
     )
     active_sessions = sessions.filter(status=ClassSession.Status.ACTIVE)
@@ -281,8 +283,8 @@ def dashboard_callback(request, context):
     context.update(
         {
             "dashboard_title": (
-                "Teacher dashboard"
-                if user.role == User.Role.TEACHER
+                "Monitor dashboard"
+                if _has_monitor_access(user)
                 else "Admin dashboard"
             ),
             "dashboard_subtitle": (

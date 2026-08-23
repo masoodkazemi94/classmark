@@ -2,7 +2,13 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from .models import AttendanceRecord, AttendanceToken, ClassSession, SessionSection
+from .models import (
+    AttendanceAuditLog,
+    AttendanceRecord,
+    AttendanceToken,
+    ClassSession,
+    SessionSection,
+)
 
 
 def badge(label, modifier):
@@ -155,6 +161,32 @@ class AttendanceRecordAdmin(ModelAdmin):
         }
         return badge(obj.get_recorded_method_display(), modifiers[obj.recorded_method])
 
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        old_status = ""
+        if change:
+            old_status = AttendanceRecord.objects.get(pk=obj.pk).status
+        super().save_model(request, obj, form, change)
+        AttendanceAuditLog.objects.create(
+            attendance_record=obj,
+            student=obj.student,
+            course=obj.course,
+            session=obj.session,
+            section=obj.section,
+            action=(
+                AttendanceAuditLog.Action.UPDATED
+                if change
+                else AttendanceAuditLog.Action.CREATED
+            ),
+            old_status=old_status,
+            new_status=obj.status,
+            changed_by=request.user,
+            recorded_method=AttendanceRecord.RecordedMethod.MANUAL,
+            note=obj.note,
+        )
+
 
 @admin.register(AttendanceToken)
 class AttendanceTokenAdmin(ModelAdmin):
@@ -193,3 +225,37 @@ class AttendanceTokenAdmin(ModelAdmin):
     @admin.display(description="Validity")
     def valid_badge(self, obj):
         return badge("Valid", "success") if obj.is_valid else badge("Invalid", "danger")
+
+
+@admin.register(AttendanceAuditLog)
+class AttendanceAuditLogAdmin(ModelAdmin):
+    list_display = (
+        "created_at",
+        "course",
+        "student",
+        "section",
+        "action",
+        "old_status",
+        "new_status",
+        "changed_by",
+        "recorded_method",
+    )
+    list_filter = ("action", "recorded_method", "old_status", "new_status", "course")
+    search_fields = (
+        "student__username",
+        "student__student_code",
+        "changed_by__username",
+        "course__code",
+        "note",
+    )
+    list_select_related = ("student", "course", "session", "section", "changed_by")
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

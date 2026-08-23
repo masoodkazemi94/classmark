@@ -10,10 +10,10 @@ class UserModelTests(TestCase):
         teacher = user_model.objects.create_user(
             username="teacher",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
 
-        self.assertEqual(teacher.role, user_model.Role.TEACHER)
+        self.assertEqual(teacher.role, user_model.Role.MONITOR)
         self.assertIsNone(teacher.student_code)
         self.assertEqual(teacher.phone_number, "")
         self.assertTrue(teacher.check_password("test-password"))
@@ -52,11 +52,11 @@ class UserModelTests(TestCase):
 
         self.assertEqual(
             context.exception.message_dict["student_code"],
-            ["Student users must have a student code."],
+            ["Student and CR users must have a student code."],
         )
 
     def test_string_representation_is_username(self):
         user_model = get_user_model()
-        teacher = user_model(username="teacher", role=user_model.Role.TEACHER)
+        teacher = user_model(username="teacher", role=user_model.Role.MONITOR)
 
         self.assertEqual(str(teacher), "teacher")

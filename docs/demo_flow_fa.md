@@ -8,7 +8,7 @@
 آدرس اجرا: http://127.0.0.1:8000/
 ورود ادمین/مدرس: http://127.0.0.1:8000/admin/login/
 
-Teacher username: sample_teacher
+Monitor username: sample_monitor
 Password: classpulse123
 ```
 
@@ -110,7 +110,7 @@ http://127.0.0.1:8000/admin/login/
 با کاربر نمونه وارد شو:
 
 ```text
-sample_teacher
+sample_monitor
 classpulse123
 ```
 
@@ -131,7 +131,7 @@ Missing attendance
 بعد کارت‌های Quick access را نشان بده:
 
 ```text
-Teacher courses
+Monitor courses
 Course workspace
 Create session
 Attendance report

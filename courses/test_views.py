@@ -13,15 +13,15 @@ class TeacherCourseViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.other_teacher = user_model.objects.create_user(
             username="other-teacher",
             password="test-password",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -32,14 +32,14 @@ class TeacherCourseViewTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
         cls.other_course = Course.objects.create(
             title="Data Structures",
             code="CS-102",
-            teacher=cls.other_teacher,
+            monitor=cls.other_teacher,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -61,17 +61,17 @@ class TeacherCourseViewTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_teacher_course_list_shows_only_owned_courses(self):
-        self.client.force_login(self.teacher)
+    def test_monitor_course_list_shows_all_courses(self):
+        self.client.force_login(self.monitor)
 
         response = self.client.get(reverse("courses:course-list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.course.title)
-        self.assertNotContains(response, self.other_course.title)
+        self.assertContains(response, self.other_course.title)
 
     def test_teacher_can_view_owned_course_detail(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("courses:course-detail", args=[self.course.pk])
@@ -81,17 +81,17 @@ class TeacherCourseViewTests(TestCase):
         self.assertContains(response, self.course.title)
         self.assertContains(response, self.student.username)
 
-    def test_teacher_cannot_view_another_teachers_course_detail(self):
-        self.client.force_login(self.teacher)
+    def test_monitor_can_view_course_created_by_another_monitor(self):
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("courses:course-detail", args=[self.other_course.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_teacher_can_access_create_session_page_for_owned_course(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("courses:session-create", args=[self.course.pk])
@@ -102,7 +102,7 @@ class TeacherCourseViewTests(TestCase):
         self.assertContains(response, self.course.title)
 
     def test_teacher_can_create_session_for_owned_course(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("courses:session-create", args=[self.course.pk]),
@@ -121,7 +121,7 @@ class TeacherCourseViewTests(TestCase):
         self.assertEqual(session.sections.count(), 3)
 
     def test_teacher_sees_message_when_session_create_form_is_invalid(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("courses:session-create", args=[self.course.pk]),
@@ -139,11 +139,11 @@ class TeacherCourseViewTests(TestCase):
         )
         self.assertContains(response, "End time must be after the start time.")
 
-    def test_teacher_cannot_create_session_for_another_teachers_course(self):
-        self.client.force_login(self.teacher)
+    def test_monitor_can_create_session_for_course_created_by_another_monitor(self):
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("courses:session-create", args=[self.other_course.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)

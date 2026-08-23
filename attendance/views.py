@@ -5,11 +5,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from accounts.decorators import teacher_required
+from accounts.decorators import can_access_course, course_manager_required, monitor_required
 from courses.models import Enrollment
 
 from .forms import ManualAttendanceForm
-from .models import AttendanceRecord, AttendanceToken, ClassSession
+from .models import AttendanceAuditLog, AttendanceRecord, AttendanceToken, ClassSession
 from .services import (
     build_attendance_scan_url,
     build_qr_code_data_url,
@@ -21,15 +21,19 @@ from .services import (
 )
 
 
-def _get_owned_session(*, session_id, teacher):
-    return get_object_or_404(
+def _get_accessible_session(*, session_id, user):
+    session = get_object_or_404(
         ClassSession.objects.select_related("course"),
         pk=session_id,
-        course__teacher=teacher,
     )
+    if not can_access_course(user, session.course):
+        from django.core.exceptions import PermissionDenied
+
+        raise PermissionDenied
+    return session
 
 
-def _session_detail_context(*, session, manual_attendance_form=None):
+def _session_detail_context(*, session, actor, manual_attendance_form=None):
     sections = list(session.sections.all())
     enrollments = list(
         Enrollment.objects.filter(course=session.course, is_active=True)
@@ -59,7 +63,7 @@ def _session_detail_context(*, session, manual_attendance_form=None):
         "sections": sections,
         "attendance_rows": attendance_rows,
         "manual_attendance_form": manual_attendance_form
-        or ManualAttendanceForm(session=session),
+        or ManualAttendanceForm(session=session, actor=actor),
     }
 
 
@@ -98,21 +102,21 @@ def _scan_error_response(request, error):
     )
 
 
-@teacher_required
+@course_manager_required
 def session_detail(request, session_id):
-    session = _get_owned_session(session_id=session_id, teacher=request.user)
+    session = _get_accessible_session(session_id=session_id, user=request.user)
 
     return render(
         request,
         "attendance/session_detail.html",
-        _session_detail_context(session=session),
+        _session_detail_context(session=session, actor=request.user),
     )
 
 
-@teacher_required
+@course_manager_required
 @require_http_methods(["GET", "POST"])
 def session_qr(request, session_id):
-    session = _get_owned_session(session_id=session_id, teacher=request.user)
+    session = _get_accessible_session(session_id=session_id, user=request.user)
 
     if session.status != ClassSession.Status.ACTIVE:
         messages.error(request, "QR codes are available only for active sessions.")
@@ -174,11 +178,11 @@ def scan_attendance(request, token):
     )
 
 
-@teacher_required
+@course_manager_required
 @require_POST
 def manual_attendance(request, session_id):
-    session = _get_owned_session(session_id=session_id, teacher=request.user)
-    form = ManualAttendanceForm(request.POST, session=session)
+    session = _get_accessible_session(session_id=session_id, user=request.user)
+    form = ManualAttendanceForm(request.POST, session=session, actor=request.user)
 
     if form.is_valid():
         attendance_values = {
@@ -209,14 +213,18 @@ def manual_attendance(request, session_id):
     return render(
         request,
         "attendance/session_detail.html",
-        _session_detail_context(session=session, manual_attendance_form=form),
+        _session_detail_context(
+            session=session,
+            actor=request.user,
+            manual_attendance_form=form,
+        ),
     )
 
 
-@teacher_required
+@course_manager_required
 @require_POST
 def session_close(request, session_id):
-    session = _get_owned_session(session_id=session_id, teacher=request.user)
+    session = _get_accessible_session(session_id=session_id, user=request.user)
 
     try:
         result = close_session(session=session, closed_by=request.user)
@@ -232,3 +240,15 @@ def session_close(request, session_id):
             )
 
     return redirect("attendance:session-detail", session_id=session.pk)
+
+
+@monitor_required
+def audit_log(request):
+    logs = AttendanceAuditLog.objects.select_related(
+        "student",
+        "course",
+        "session",
+        "section",
+        "changed_by",
+    )[:500]
+    return render(request, "attendance/audit_log.html", {"audit_logs": logs})

@@ -16,9 +16,9 @@ class CourseModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -30,7 +30,7 @@ class CourseModelTests(TestCase):
         values = {
             "title": "Introduction to Programming",
             "code": "CS-101",
-            "teacher": self.teacher,
+            "monitor": self.monitor,
             "start_date": date(2026, 9, 1),
             "end_date": date(2026, 12, 15),
         }
@@ -43,18 +43,18 @@ class CourseModelTests(TestCase):
         course.full_clean()
         course.save()
 
-        self.assertEqual(course.teacher, self.teacher)
+        self.assertEqual(course.monitor, self.monitor)
         self.assertTrue(course.is_active)
 
     def test_non_teacher_cannot_own_course(self):
-        course = self.make_course(teacher=self.student)
+        course = self.make_course(monitor=self.student)
 
         with self.assertRaises(ValidationError) as context:
             course.full_clean()
 
         self.assertIn(
-            "Only users with the teacher role can own a course.",
-            context.exception.message_dict["teacher"],
+            "Only users with the monitor role can create a course.",
+            context.exception.message_dict["monitor"],
         )
 
     def test_end_date_cannot_be_before_start_date(self):
@@ -73,7 +73,7 @@ class CourseModelTests(TestCase):
             Course.objects.create(
                 title="Invalid Course",
                 code="INVALID",
-                teacher=self.teacher,
+                monitor=self.monitor,
                 start_date=date(2026, 9, 1),
                 end_date=date(2026, 8, 31),
             )
@@ -88,9 +88,9 @@ class EnrollmentModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -100,7 +100,7 @@ class EnrollmentModelTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -115,14 +115,28 @@ class EnrollmentModelTests(TestCase):
         self.assertEqual(enrollment.student, self.student)
         self.assertTrue(enrollment.is_active)
 
+    def test_cr_can_be_enrolled_in_course(self):
+        user_model = get_user_model()
+        cr = user_model.objects.create_user(
+            username="cr",
+            role=user_model.Role.CR,
+            student_code="CR-001",
+        )
+        enrollment = Enrollment(course=self.course, student=cr)
+
+        enrollment.full_clean()
+        enrollment.save()
+
+        self.assertEqual(enrollment.student, cr)
+
     def test_non_student_cannot_be_enrolled(self):
-        enrollment = Enrollment(course=self.course, student=self.teacher)
+        enrollment = Enrollment(course=self.course, student=self.monitor)
 
         with self.assertRaises(ValidationError) as context:
             enrollment.full_clean()
 
         self.assertIn(
-            "Only users with the student role can be enrolled.",
+            "Only students and CR users can be enrolled.",
             context.exception.message_dict["student"],
         )
 
@@ -148,12 +162,12 @@ class SampleDataCommandTests(TestCase):
         call_command("seed_sample_data", stdout=output)
 
         user_model = get_user_model()
-        teacher = user_model.objects.get(username="sample_teacher")
+        teacher = user_model.objects.get(username="sample_monitor")
         students = user_model.objects.filter(username__startswith="sample_student_")
-        course = Course.objects.get(code="DEMO-101", teacher=teacher)
+        course = Course.objects.get(code="DEMO-101", monitor=teacher)
         session = ClassSession.objects.get(course=course, date=date(2026, 9, 1))
 
-        self.assertEqual(teacher.role, user_model.Role.TEACHER)
+        self.assertEqual(teacher.role, user_model.Role.MONITOR)
         self.assertTrue(teacher.is_staff)
         self.assertEqual(students.count(), 3)
         self.assertEqual(
@@ -170,10 +184,10 @@ class SampleDataCommandTests(TestCase):
         call_command("seed_sample_data", stdout=StringIO())
 
         user_model = get_user_model()
-        teacher = user_model.objects.get(username="sample_teacher")
-        course = Course.objects.get(code="DEMO-101", teacher=teacher)
+        teacher = user_model.objects.get(username="sample_monitor")
+        course = Course.objects.get(code="DEMO-101", monitor=teacher)
 
-        self.assertEqual(user_model.objects.filter(username="sample_teacher").count(), 1)
+        self.assertEqual(user_model.objects.filter(username="sample_monitor").count(), 1)
         self.assertEqual(
             user_model.objects.filter(username__startswith="sample_student_").count(),
             3,

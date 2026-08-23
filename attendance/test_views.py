@@ -15,13 +15,13 @@ class TeacherSessionDetailViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.other_teacher = user_model.objects.create_user(
             username="other-teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -31,7 +31,7 @@ class TeacherSessionDetailViewTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -48,7 +48,7 @@ class TeacherSessionDetailViewTests(TestCase):
             session=cls.session,
             section=first_section,
             status=AttendanceRecord.Status.PRESENT,
-            recorded_by=cls.teacher,
+            recorded_by=cls.monitor,
         )
 
     def test_anonymous_user_is_redirected_from_session_detail(self):
@@ -72,7 +72,7 @@ class TeacherSessionDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_owner_can_view_session_sections_students_and_statuses(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("attendance:session-detail", args=[self.session.pk])
@@ -89,17 +89,17 @@ class TeacherSessionDetailViewTests(TestCase):
         self.assertContains(response, "Mark attendance manually")
         self.assertContains(response, "csrfmiddlewaretoken")
 
-    def test_other_teacher_cannot_view_session_detail(self):
+    def test_other_monitor_can_view_session_detail(self):
         self.client.force_login(self.other_teacher)
 
         response = self.client.get(
             reverse("attendance:session-detail", args=[self.session.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_owner_can_mark_student_for_all_sections(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("attendance:manual-attendance", args=[self.session.pk]),
@@ -131,7 +131,7 @@ class TeacherSessionDetailViewTests(TestCase):
         )
 
     def test_owner_can_mark_student_for_one_section(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
         second_section = self.session.sections.get(section_number=2)
 
         response = self.client.post(
@@ -169,7 +169,7 @@ class TeacherSessionDetailViewTests(TestCase):
             role=user_model.Role.STUDENT,
             student_code="STU-002",
         )
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("attendance:manual-attendance", args=[self.session.pk]),
@@ -191,7 +191,7 @@ class TeacherSessionDetailViewTests(TestCase):
             AttendanceRecord.objects.filter(student=unenrolled_student).exists()
         )
 
-    def test_other_teacher_cannot_submit_manual_attendance(self):
+    def test_other_monitor_can_submit_manual_attendance(self):
         self.client.force_login(self.other_teacher)
 
         response = self.client.post(
@@ -204,8 +204,8 @@ class TeacherSessionDetailViewTests(TestCase):
             },
         )
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(AttendanceRecord.objects.count(), 1)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AttendanceRecord.objects.count(), 3)
 
     def test_duplicate_manual_submission_updates_existing_record(self):
         first_section = self.session.sections.get(section_number=1)
@@ -213,7 +213,7 @@ class TeacherSessionDetailViewTests(TestCase):
             student=self.student,
             section=first_section,
         )
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("attendance:manual-attendance", args=[self.session.pk]),
@@ -241,7 +241,7 @@ class TeacherSessionDetailViewTests(TestCase):
     def test_owner_can_close_active_session_and_create_missing_absences(self):
         self.session.status = ClassSession.Status.ACTIVE
         self.session.save(update_fields=("status",))
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("attendance:session-close", args=[self.session.pk]),
@@ -274,7 +274,7 @@ class TeacherSessionDetailViewTests(TestCase):
             2,
         )
 
-    def test_other_teacher_cannot_close_session(self):
+    def test_other_monitor_can_close_session(self):
         self.session.status = ClassSession.Status.ACTIVE
         self.session.save(update_fields=("status",))
         self.client.force_login(self.other_teacher)
@@ -283,15 +283,15 @@ class TeacherSessionDetailViewTests(TestCase):
             reverse("attendance:session-close", args=[self.session.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 302)
         self.session.refresh_from_db()
-        self.assertEqual(self.session.status, ClassSession.Status.ACTIVE)
-        self.assertEqual(AttendanceRecord.objects.count(), 1)
+        self.assertEqual(self.session.status, ClassSession.Status.CLOSED)
+        self.assertEqual(AttendanceRecord.objects.count(), 3)
 
     def test_close_session_requires_post(self):
         self.session.status = ClassSession.Status.ACTIVE
         self.session.save(update_fields=("status",))
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("attendance:session-close", args=[self.session.pk])
@@ -306,13 +306,13 @@ class TeacherSessionQRCodeViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.other_teacher = user_model.objects.create_user(
             username="other-teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -322,7 +322,7 @@ class TeacherSessionQRCodeViewTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -355,7 +355,7 @@ class TeacherSessionQRCodeViewTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_teacher_can_generate_qr_for_own_session(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.post(
             reverse("attendance:session-qr", args=[self.session.pk]),
@@ -373,18 +373,18 @@ class TeacherSessionQRCodeViewTests(TestCase):
         self.assertContains(response, "data:image/png;base64,")
         self.assertContains(response, "Refresh QR")
 
-    def test_teacher_cannot_generate_qr_for_another_teachers_session(self):
+    def test_other_monitor_can_generate_qr_for_session(self):
         self.client.force_login(self.other_teacher)
 
         response = self.client.post(
             reverse("attendance:session-qr", args=[self.session.pk])
         )
 
-        self.assertEqual(response.status_code, 404)
-        self.assertFalse(AttendanceToken.objects.exists())
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(AttendanceToken.objects.exists())
 
     def test_qr_token_url_is_correct(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         with patch(
             "attendance.models.secrets.token_urlsafe",
@@ -398,7 +398,7 @@ class TeacherSessionQRCodeViewTests(TestCase):
         self.assertEqual(response.context["scan_url"], "/attendance/scan/known-token/")
 
     def test_refresh_qr_deactivates_old_token(self):
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         with patch(
             "attendance.models.secrets.token_urlsafe",
@@ -421,7 +421,7 @@ class TeacherSessionQRCodeViewTests(TestCase):
     def test_qr_page_rejects_non_active_session_with_message(self):
         self.session.status = ClassSession.Status.DRAFT
         self.session.save(update_fields=("status",))
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
 
         response = self.client.get(
             reverse("attendance:session-qr", args=[self.session.pk]),
@@ -443,9 +443,9 @@ class StudentAttendanceScanViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.teacher = user_model.objects.create_user(
+        cls.monitor = user_model.objects.create_user(
             username="teacher",
-            role=user_model.Role.TEACHER,
+            role=user_model.Role.MONITOR,
         )
         cls.student = user_model.objects.create_user(
             username="student",
@@ -460,7 +460,7 @@ class StudentAttendanceScanViewTests(TestCase):
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
-            teacher=cls.teacher,
+            monitor=cls.monitor,
             start_date=date(2026, 9, 1),
             end_date=date(2026, 12, 15),
         )
@@ -645,7 +645,7 @@ class StudentAttendanceScanViewTests(TestCase):
 
     def test_qr_scan_is_rejected_after_teacher_closes_session(self):
         self.make_token()
-        self.client.force_login(self.teacher)
+        self.client.force_login(self.monitor)
         self.client.post(reverse("attendance:session-close", args=[self.session.pk]))
         self.client.force_login(self.student)
 

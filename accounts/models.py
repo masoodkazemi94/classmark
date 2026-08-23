@@ -6,7 +6,8 @@ from django.db import models
 class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = "ADMIN", "Admin"
-        TEACHER = "TEACHER", "Teacher"
+        MONITOR = "MONITOR", "Monitor"
+        CR = "CR", "CR (Monitor Assistant)"
         STUDENT = "STUDENT", "Student"
 
     role = models.CharField(
@@ -25,9 +26,9 @@ class User(AbstractUser):
     def clean(self):
         super().clean()
 
-        if self.role == self.Role.STUDENT and not self.student_code:
+        if self.role in {self.Role.STUDENT, self.Role.CR} and not self.student_code:
             raise ValidationError(
-                {"student_code": "Student users must have a student code."}
+                {"student_code": "Student and CR users must have a student code."}
             )
 
     def __str__(self):
