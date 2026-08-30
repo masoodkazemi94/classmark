@@ -14,8 +14,20 @@
 <div class="page-heading__actions" style="margin-bottom:1.25rem">
     <a class="button" href="{% url 'courses:session-create' course.pk %}">＋ Create session</a>
     <a class="button button--secondary" href="{% url 'courses:session-calendar' %}?course={{ course.pk }}">Open calendar</a>
+    {% if can_edit_course %}<a class="button button--secondary" href="{% url 'courses:course-edit' course.pk %}">Course & location settings</a>{% endif %}
     {% if can_view_reports %}<a class="button button--secondary" href="{% url 'reports:course-report' course.pk %}">View attendance report</a>{% endif %}
 </div>
+
+<section class="panel" style="margin-bottom:1.25rem">
+    <span class="eyebrow">QR location validation</span>
+    {% if course.require_attendance_location %}
+        <h2>Enabled · {{ course.attendance_radius_meters }} m radius</h2>
+        <p class="panel-subtitle">{{ course.attendance_location_name|default:"Configured classroom location" }}. Students must share a sufficiently accurate location during QR check-in.</p>
+    {% else %}
+        <h2>Not enabled</h2>
+        <p class="panel-subtitle">QR scans currently verify the rotating token and enrollment, but not physical location.{% if can_edit_course %} Open course settings to enable it.{% endif %}</p>
+    {% endif %}
+</section>
 
 <nav class="workspace-tabs" aria-label="Course workspace sections">
     <a href="#sessions">Sessions</a>

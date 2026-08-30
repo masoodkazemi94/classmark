@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
@@ -19,6 +21,7 @@ from .services import (
     create_qr_attendance_from_token,
     mark_student_for_section,
     mark_student_for_session,
+    validate_qr_attendance_token,
 )
 
 
@@ -160,7 +163,8 @@ def session_qr(request, session_id):
         .order_by("-created_at")
         .first()
     )
-    scan_url = build_attendance_scan_url(token) if token else ""
+    scan_path = build_attendance_scan_url(token) if token else ""
+    scan_url = request.build_absolute_uri(scan_path) if scan_path else ""
     qr_code_data_url = build_qr_code_data_url(scan_url) if scan_url else ""
 
     return render(
@@ -171,16 +175,59 @@ def session_qr(request, session_id):
             "token": token,
             "scan_url": scan_url,
             "qr_code_data_url": qr_code_data_url,
+            "qr_rotation_seconds": settings.QR_TOKEN_TTL_SECONDS,
         },
     )
 
 
+@course_manager_required
+@require_POST
+def session_qr_refresh(request, session_id):
+    session = _get_accessible_session(session_id=session_id, user=request.user)
+    if session.status != ClassSession.Status.ACTIVE:
+        return JsonResponse(
+            {"error": "This session is no longer accepting QR scans."},
+            status=409,
+        )
+
+    token = create_attendance_token(course=session.course, session=session)
+    scan_url = request.build_absolute_uri(build_attendance_scan_url(token))
+    return JsonResponse(
+        {
+            "scan_url": scan_url,
+            "qr_code_data_url": build_qr_code_data_url(scan_url),
+            "expires_at": timezone.localtime(token.expires_at).strftime("%H:%M:%S"),
+            "rotation_seconds": settings.QR_TOKEN_TTL_SECONDS,
+        }
+    )
+
+
 @login_required
+@require_http_methods(["GET", "POST"])
 def scan_attendance(request, token):
+    if request.method == "GET":
+        try:
+            attendance_token = validate_qr_attendance_token(
+                token_value=token,
+                student=request.user,
+            )
+        except ValidationError as error:
+            return _scan_error_response(request, error)
+
+        if attendance_token.course.require_attendance_location:
+            return render(
+                request,
+                "attendance/scan_location.html",
+                {"attendance_token": attendance_token},
+            )
+
     try:
         result = create_qr_attendance_from_token(
             token_value=token,
             student=request.user,
+            latitude=request.POST.get("latitude"),
+            longitude=request.POST.get("longitude"),
+            accuracy=request.POST.get("accuracy"),
         )
     except ValidationError as error:
         return _scan_error_response(request, error)

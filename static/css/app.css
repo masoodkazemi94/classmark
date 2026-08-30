@@ -345,6 +345,7 @@ tbody tr:hover td { background: #fbfdff; }
 .qr-card { align-items: center; background: white; border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); display: flex; flex-direction: column; padding: 1.5rem; text-align: center; }
 .qr-card img { background: white; border: 10px solid white; border-radius: .8rem; max-width: 100%; }
 .qr-help { color: var(--muted); font-size: .85rem; }
+.qr-help code { display: block; max-width: 100%; margin-top: .35rem; padding: .55rem .7rem; overflow-wrap: anywhere; border-radius: .55rem; background: var(--surface-soft); font-size: .72rem; }
 .steps { counter-reset: steps; display: grid; gap: 1rem; list-style: none; margin: 1.2rem 0; padding: 0; }
 .steps li { color: var(--muted); padding-left: 2.8rem; position: relative; }
 .steps li::before { align-items: center; background: var(--primary-soft); border-radius: 50%; color: var(--primary); content: counter(steps); counter-increment: steps; display: flex; font-size: .75rem; font-weight: 800; height: 1.8rem; justify-content: center; left: 0; position: absolute; top: -.1rem; width: 1.8rem; }

@@ -31,8 +31,12 @@ active enrollments, but retain the user, attendance records, and audit history.
 * `LEAVE` is tracked separately.
 * Closing an active session creates missing `ABSENT` records without overwriting
   existing records.
-* QR tokens use secure randomness, expire quickly, and work only for active
-  sessions and active course enrollments.
+* QR tokens use secure randomness and rotate every five seconds on the live QR
+  page, where both the image and absolute scan URL update automatically.
+* Monitor/Admin users may configure per-course coordinates and a 10–5,000 meter
+  attendance radius. When enabled, a student must POST browser coordinates with
+  accuracy no worse than the radius and be physically inside it. CR users cannot
+  alter this policy. Coordinates submitted during a scan are not stored.
 
 ## Architecture
 
@@ -89,6 +93,8 @@ not committed. The database was deployed without seed data and contains only
 one Admin superuser. Native Nginx/PostgreSQL services are disabled; Docker owns
 the production services. The firewall permits only SSH and HTTP. HTTPS remains
 pending until a domain is available.
+Browser geolocation requires HTTPS, so course location enforcement must remain
+disabled on this deployment until a domain and trusted certificate are added.
 
 Pushes to `main` use `.github/workflows/deploy.yml`: tests and migration checks
 must pass before an immutable release is uploaded with the dedicated `deploy`

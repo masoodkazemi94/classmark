@@ -1,6 +1,7 @@
 from base64 import b64encode
 from datetime import datetime, timedelta
 from io import BytesIO
+from math import asin, cos, isfinite, radians, sin, sqrt
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -152,8 +153,133 @@ def build_qr_code_data_url(value):
     return f"data:image/png;base64,{encoded_image}"
 
 
+def _validate_qr_token(*, token, student, scanned_at):
+    if not token.is_active:
+        raise ValidationError(
+            {
+                "token": (
+                    "This QR code is no longer active. Please ask your CR or monitor "
+                    "for the latest QR code."
+                )
+            }
+        )
+
+    if scanned_at >= token.expires_at:
+        raise ValidationError(
+            {
+                "token": (
+                    "This QR code has expired. Please scan the latest code on screen."
+                )
+            }
+        )
+
+    if token.session.status != ClassSession.Status.ACTIVE:
+        raise ValidationError(
+            {"session": "This attendance session is not accepting QR scans."}
+        )
+
+    _validate_enrollment(student=student, course=token.course)
+
+
+def validate_qr_attendance_token(*, token_value, student, scanned_at=None):
+    """Validate a token before displaying the browser location prompt."""
+    try:
+        token = AttendanceToken.objects.select_related(
+            "course", "session", "section"
+        ).get(token=token_value)
+    except AttendanceToken.DoesNotExist as exc:
+        raise ValidationError(
+            {"token": "This QR code is invalid. Please scan the latest code on screen."}
+        ) from exc
+
+    _validate_qr_token(
+        token=token,
+        student=student,
+        scanned_at=scanned_at or timezone.now(),
+    )
+    return token
+
+
+def _coordinate(value, *, field_name, minimum, maximum):
+    try:
+        coordinate = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError(
+            {"location": f"Your browser did not provide a valid {field_name}."}
+        ) from exc
+    if not isfinite(coordinate) or not minimum <= coordinate <= maximum:
+        raise ValidationError(
+            {"location": f"Your browser provided an invalid {field_name}."}
+        )
+    return coordinate
+
+
+def _validate_qr_location(*, course, latitude, longitude, accuracy):
+    if not course.require_attendance_location:
+        return
+
+    if course.attendance_latitude is None or course.attendance_longitude is None:
+        raise ValidationError(
+            {"location": "This course's attendance location is not configured."}
+        )
+
+    if latitude in (None, "") or longitude in (None, "") or accuracy in (None, ""):
+        raise ValidationError(
+            {"location": "Location access is required for this course's QR check-in."}
+        )
+
+    student_latitude = _coordinate(
+        latitude, field_name="latitude", minimum=-90, maximum=90
+    )
+    student_longitude = _coordinate(
+        longitude, field_name="longitude", minimum=-180, maximum=180
+    )
+    location_accuracy = _coordinate(
+        accuracy, field_name="location accuracy", minimum=0, maximum=100000
+    )
+    allowed_radius = course.attendance_radius_meters
+    if location_accuracy > allowed_radius:
+        raise ValidationError(
+            {
+                "location": (
+                    f"Location accuracy is too low ({location_accuracy:.0f} m). "
+                    "Move near a window, enable precise location, and scan again."
+                )
+            }
+        )
+
+    earth_radius_meters = 6_371_000
+    course_latitude = float(course.attendance_latitude)
+    course_longitude = float(course.attendance_longitude)
+    latitude_delta = radians(course_latitude - student_latitude)
+    longitude_delta = radians(course_longitude - student_longitude)
+    haversine = sin(latitude_delta / 2) ** 2 + (
+        cos(radians(student_latitude))
+        * cos(radians(course_latitude))
+        * sin(longitude_delta / 2) ** 2
+    )
+    distance = 2 * earth_radius_meters * asin(sqrt(haversine))
+    if distance > allowed_radius:
+        raise ValidationError(
+            {
+                "location": (
+                    f"You are about {distance:.0f} m from the class location. "
+                    f"You must be within {allowed_radius} m to check in."
+                )
+            }
+        )
+
+
 @transaction.atomic
-def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
+def create_qr_attendance_from_token(
+    *,
+    token_value,
+    student,
+    scanned_at=None,
+    latitude=None,
+    longitude=None,
+    accuracy=None,
+):
     """Create QR attendance records for an enrolled student without overwriting."""
     try:
         token = (
@@ -173,32 +299,13 @@ def create_qr_attendance_from_token(*, token_value, student, scanned_at=None):
 
     scanned_at = scanned_at or timezone.now()
 
-    if not token.is_active:
-        raise ValidationError(
-            {
-                "token": (
-                    "This QR code is no longer active. Please ask your CR or monitor "
-                    "for a new QR code."
-                )
-            }
-        )
-
-    if scanned_at >= token.expires_at:
-        raise ValidationError(
-            {
-                "token": (
-                    "This QR code has expired. Please ask your CR or monitor for a new "
-                    "QR code."
-                )
-            }
-        )
-
-    if token.session.status != ClassSession.Status.ACTIVE:
-        raise ValidationError(
-            {"session": "This attendance session is not accepting QR scans."}
-        )
-
-    _validate_enrollment(student=student, course=token.course)
+    _validate_qr_token(token=token, student=student, scanned_at=scanned_at)
+    _validate_qr_location(
+        course=token.course,
+        latitude=latitude,
+        longitude=longitude,
+        accuracy=accuracy,
+    )
     sections = [token.section] if token.section else _get_session_sections(
         token.session
     )

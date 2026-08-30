@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Create course | ClassPulse{% endblock %}
+{% block title %}{% if course %}Edit {{ course.code }}{% else %}Create course{% endif %} | ClassPulse{% endblock %}
 
 {% block content %}
 <div class="page-heading page-heading--split">
     <div>
         <a class="back-link" href="{% url 'courses:course-list' %}">← Back to courses</a>
         <span class="eyebrow">Course setup</span>
-        <h1>Create a new course</h1>
-        <p class="page-lead">Set the course identity and teaching period. Students and sessions can be added next.</p>
+        <h1>{% if course %}Edit course settings{% else %}Create a new course{% endif %}</h1>
+        <p class="page-lead">Set the course details and optional location protection for QR attendance.</p>
     </div>
 </div>
 
@@ -26,10 +26,43 @@
                 </div>
             {% endfor %}
         </div>
+        <div class="panel" style="background:var(--surface-soft)">
+            <strong>Set coordinates from this device</strong>
+            <p class="panel-subtitle">Stand at the classroom location, then use precise GPS to fill latitude and longitude.</p>
+            <button class="button button--secondary" type="button" id="use-current-location">Use current location</button>
+            <small id="course-location-status" style="display:block;margin-top:.65rem"></small>
+        </div>
         <div class="form-actions">
-            <button type="submit">Create course</button>
-            <a class="button button--secondary" href="{% url 'courses:course-list' %}">Cancel</a>
+            <button type="submit">{% if course %}Save settings{% else %}Create course{% endif %}</button>
+            <a class="button button--secondary" href="{% if course %}{% url 'courses:course-detail' course.pk %}{% else %}{% url 'courses:course-list' %}{% endif %}">Cancel</a>
         </div>
     </form>
 </div>
+<script>
+(() => {
+    const button = document.getElementById("use-current-location");
+    const status = document.getElementById("course-location-status");
+    button.addEventListener("click", () => {
+        if (!window.isSecureContext || !navigator.geolocation) {
+            status.textContent = "GPS requires HTTPS. You can enter the coordinates manually for now.";
+            return;
+        }
+        button.disabled = true;
+        status.textContent = "Finding precise location…";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById("id_attendance_latitude").value = position.coords.latitude.toFixed(6);
+                document.getElementById("id_attendance_longitude").value = position.coords.longitude.toFixed(6);
+                status.textContent = `Coordinates added (accuracy about ${Math.round(position.coords.accuracy)} m).`;
+                button.disabled = false;
+            },
+            () => {
+                status.textContent = "Could not read this device's location. Allow precise location and try again.";
+                button.disabled = false;
+            },
+            {enableHighAccuracy: true, maximumAge: 0, timeout: 10000}
+        );
+    });
+})();
+</script>
 {% endblock %}

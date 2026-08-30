@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm your location | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+    <section class="panel" style="max-width:38rem;margin-inline:auto;text-align:center">
+        <span class="eyebrow">Secure check-in</span>
+        <h1>Confirm your class location</h1>
+        <p class="page-lead">Location is required for this QR check-in. Your position is checked against the course radius and is not stored in your attendance record.</p>
+        <div id="location-status" class="form-alert" role="status">Requesting precise location…</div>
+        <form method="post" id="location-form">
+            {% csrf_token %}
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+            <input type="hidden" name="accuracy" id="accuracy">
+            <button type="button" id="location-button" class="button--block">Try location again</button>
+        </form>
+        <p class="qr-help">You must allow precise location and submit before this 5-second QR expires. If it expires, scan the newest code on the class screen.</p>
+    </section>
+</div>
+<script>
+(() => {
+    const form = document.getElementById("location-form");
+    const status = document.getElementById("location-status");
+    const button = document.getElementById("location-button");
+
+    function requestLocation() {
+        if (!window.isSecureContext || !navigator.geolocation) {
+            status.textContent = "Location is unavailable. Open ClassPulse over HTTPS, then scan the newest QR code.";
+            return;
+        }
+        button.disabled = true;
+        status.textContent = "Finding your precise location…";
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById("latitude").value = position.coords.latitude;
+                document.getElementById("longitude").value = position.coords.longitude;
+                document.getElementById("accuracy").value = position.coords.accuracy;
+                status.textContent = "Location found. Checking attendance…";
+                form.submit();
+            },
+            (error) => {
+                const messages = {
+                    1: "Location permission was denied. Allow precise location and try again.",
+                    2: "Your location could not be determined. Enable GPS and try again.",
+                    3: "Location took too long. Scan the newest QR code and try again."
+                };
+                status.textContent = messages[error.code] || "Location could not be checked.";
+                button.disabled = false;
+            },
+            {enableHighAccuracy: true, maximumAge: 0, timeout: 4000}
+        );
+    }
+
+    button.addEventListener("click", requestLocation);
+    requestLocation();
+})();
+</script>
+{% endblock %}

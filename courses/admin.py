@@ -27,6 +27,18 @@ class CourseAdmin(ModelAdmin):
     fieldsets = (
         ("Course", {"fields": ("code", "title", "monitor", "is_active")}),
         ("Schedule", {"fields": ("start_date", "end_date")}),
+        (
+            "QR location validation",
+            {
+                "fields": (
+                    "require_attendance_location",
+                    "attendance_location_name",
+                    "attendance_latitude",
+                    "attendance_longitude",
+                    "attendance_radius_meters",
+                )
+            },
+        ),
     )
 
     def get_queryset(self, request):

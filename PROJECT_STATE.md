@@ -78,8 +78,13 @@ authorization boundary.
 * Course-scoped CR authorization enforced in views and attendance services
 * Transactional creation of sessions and their three fixed sections
 * Manual attendance for one section or all sections
-* Secure, expiring, refreshable QR tokens
-* Enrollment, token, active-session, expiry, and duplicate-scan checks
+* Secure QR tokens that automatically rotate every five seconds, refreshing
+  both the image and displayed absolute scan URL without reloading the page
+* Monitor/Admin-only course location settings with classroom coordinates,
+  optional enforcement, and a configurable 10–5,000 meter radius
+* Server-side QR location and reported-accuracy validation before attendance is
+  written; student coordinates are validated transiently and are not stored
+* Enrollment, token, active-session, expiry, location, and duplicate-scan checks
 * Transactional session closing and missing-record absence creation
 * Monitor-only reports, student details, and summary/detail CSV exports
 * Monitor/Admin report center with searchable course selection and interactive,
@@ -120,6 +125,8 @@ The current migrations preserve existing data:
   the demo username when safe.
 * `courses.0002` renames `Course.teacher` to `Course.monitor`.
 * `courses.0003` permits both Monitor and Admin users to create courses.
+* `courses.0004` adds course attendance coordinates, radius, and location policy.
+* `courses.0005` prevents location enforcement without configured coordinates.
 * `attendance.0004` creates `AttendanceAuditLog`.
 * `attendance.0005` imports existing attendance as an audit baseline and
   normalizes existing superusers to the `ADMIN` role.
@@ -157,7 +164,7 @@ python manage.py makemigrations --check --dry-run
 ## Current verification
 
 ```text
-python manage.py test: 163 tests passed
+python manage.py test: 172 tests passed
 python manage.py makemigrations --check --dry-run: no changes detected
 production Docker services: web and PostgreSQL healthy; Nginx reachable
 production data: 1 Admin plus 1 user-created Monitor, 0 courses, 0 enrollments,
@@ -171,4 +178,8 @@ production data: 1 Admin plus 1 user-created Monitor, 0 courses, 0 enrollments,
 * Email is delivered after the database commit in the web request; this MVP has
   no background job queue. SMTP failures do not undo attendance or session data.
 * The current IP-only deployment uses HTTP. Add a domain and trusted certificate
-  before enabling production HTTPS redirects, secure cookies, and HSTS.
+  before enabling production HTTPS redirects, secure cookies, and HSTS. Browser
+  geolocation is unavailable on most phones until HTTPS is enabled, so enforced
+  location check-in should remain off in production until then.
+* Browser-provided GPS makes casual remote QR sharing harder but cannot prevent
+  deliberate device-level location spoofing.

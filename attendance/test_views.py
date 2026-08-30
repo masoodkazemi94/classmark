@@ -371,7 +371,7 @@ class TeacherSessionQRCodeViewTests(TestCase):
         self.assertContains(response, "QR code refreshed.")
         self.assertContains(response, "QR code for student attendance scan")
         self.assertContains(response, "data:image/png;base64,")
-        self.assertContains(response, "Refresh QR")
+        self.assertContains(response, "Refresh now")
 
     def test_other_monitor_can_generate_qr_for_session(self):
         self.client.force_login(self.other_teacher)
@@ -395,7 +395,10 @@ class TeacherSessionQRCodeViewTests(TestCase):
                 follow=True,
             )
 
-        self.assertEqual(response.context["scan_url"], "/attendance/scan/known-token/")
+        self.assertEqual(
+            response.context["scan_url"],
+            "http://testserver/attendance/scan/known-token/",
+        )
 
     def test_refresh_qr_deactivates_old_token(self):
         self.client.force_login(self.monitor)
@@ -417,6 +420,25 @@ class TeacherSessionQRCodeViewTests(TestCase):
         second_token = AttendanceToken.objects.get(token="second-token")
         self.assertFalse(first_token.is_active)
         self.assertTrue(second_token.is_active)
+
+    @override_settings(QR_TOKEN_TTL_SECONDS=5)
+    def test_live_refresh_returns_new_qr_and_five_second_expiry(self):
+        self.client.force_login(self.monitor)
+        before_refresh = timezone.now()
+
+        response = self.client.post(
+            reverse("attendance:session-qr-refresh", args=[self.session.pk]),
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["rotation_seconds"], 5)
+        self.assertTrue(payload["scan_url"].startswith("http://testserver/attendance/scan/"))
+        self.assertTrue(payload["qr_code_data_url"].startswith("data:image/png;base64,"))
+        token = AttendanceToken.objects.get(session=self.session)
+        self.assertGreaterEqual(token.expires_at, before_refresh + timedelta(seconds=5))
+        self.assertLessEqual(token.expires_at, timezone.now() + timedelta(seconds=5))
 
     def test_qr_page_rejects_non_active_session_with_message(self):
         self.session.status = ClassSession.Status.DRAFT
@@ -662,3 +684,63 @@ class StudentAttendanceScanViewTests(TestCase):
             ).count(),
             0,
         )
+
+    def enable_location(self, *, radius=100):
+        Course.objects.filter(pk=self.course.pk).update(
+            require_attendance_location=True,
+            attendance_location_name="Main classroom",
+            attendance_latitude="35.689200",
+            attendance_longitude="51.389000",
+            attendance_radius_meters=radius,
+        )
+
+    def test_location_protected_scan_prompts_before_recording(self):
+        self.enable_location()
+        self.make_token()
+        self.client.force_login(self.student)
+
+        response = self.client.get(self.scan_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Confirm your class location")
+        self.assertFalse(AttendanceRecord.objects.exists())
+
+    def test_location_protected_scan_accepts_student_inside_radius(self):
+        self.enable_location(radius=75)
+        self.make_token()
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            self.scan_url(),
+            {"latitude": "35.689210", "longitude": "51.389010", "accuracy": "8"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Attendance recorded successfully")
+        self.assertEqual(AttendanceRecord.objects.count(), 3)
+
+    def test_location_protected_scan_rejects_student_outside_radius(self):
+        self.enable_location(radius=50)
+        self.make_token()
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            self.scan_url(),
+            {"latitude": "35.699200", "longitude": "51.389000", "accuracy": "8"},
+        )
+
+        self.assertContains(response, "You must be within 50 m", status_code=400)
+        self.assertFalse(AttendanceRecord.objects.exists())
+
+    def test_location_protected_scan_rejects_inaccurate_location(self):
+        self.enable_location(radius=50)
+        self.make_token()
+        self.client.force_login(self.student)
+
+        response = self.client.post(
+            self.scan_url(),
+            {"latitude": "35.689200", "longitude": "51.389000", "accuracy": "80"},
+        )
+
+        self.assertContains(response, "Location accuracy is too low", status_code=400)
+        self.assertFalse(AttendanceRecord.objects.exists())

@@ -3,7 +3,8 @@
 ClassPulse is a small Django classroom attendance MVP. Monitors manage every
 course, promote students to CR assistants, review reports and audit history.
 CRs manage their assigned courses, enroll students, create sessions, mark
-attendance, show short-lived QR codes, and close sessions.
+attendance, show five-second rotating QR codes, and close sessions. Monitors and
+Admins can optionally require students to be inside a configured course radius.
 
 The app is intentionally simple: Django templates, Django forms, Django Unfold
 for the admin UI, PostgreSQL for normal development, and Django tests.
@@ -56,7 +57,6 @@ POSTGRES_PASSWORD=classpulse
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 
-QR_TOKEN_TTL_SECONDS=30
 LATE_THRESHOLD_MINUTES=5
 
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
@@ -70,9 +70,9 @@ EMAIL_TIMEOUT=10
 DEFAULT_FROM_EMAIL=ClassPulse <noreply@example.com>
 ```
 
-`QR_TOKEN_TTL_SECONDS` controls how quickly QR codes expire. The default is 30
-seconds. `LATE_THRESHOLD_MINUTES` controls when a QR scan becomes `LATE`
-instead of `PRESENT`.
+QR codes rotate automatically on a fixed five-second security window.
+`LATE_THRESHOLD_MINUTES` controls when a QR scan becomes `LATE` instead of
+`PRESENT`.
 
 The console email backend is safe for local development: emails are printed in
 the terminal running Django. To send real email, use your provider's SMTP
@@ -243,6 +243,12 @@ Monitor/Admin and CR users have a monthly calendar at `/courses/calendar/`.
 It supports month navigation, course/status filters, session links, and
 date-prefilled session creation after selecting a course.
 
+Only Monitor/Admin users can open a course's **Course & location settings**.
+They can enable QR location validation, name the classroom, enter its latitude
+and longitude, and choose an allowed radius from 10 to 5,000 meters. A phone's
+reported accuracy must also fit inside that radius. Browser location requires a
+secure HTTPS site in production; it will not reliably work on a plain HTTP IP.
+
 Students and CRs have an inbox at `/accounts/notifications/`. Creating a
 session automatically announces it to the active course roster. Manual, QR,
 and session-close attendance changes also create a personal status update.
@@ -260,12 +266,15 @@ without cancelling the class or attendance change.
 5. Open a course, assign students, and create a class session.
 6. Open the session detail page.
 7. Optionally send a class update to the active roster.
-8. Mark attendance manually, or open the QR page for an active session.
-9. Students sign in, check Notifications, and scan the QR code while it is valid.
-10. Close the session to mark missing section records as `ABSENT`.
-11. As a Monitor, open the Reports page, choose a course and output, then
+8. Optionally configure the course attendance location as a Monitor/Admin.
+9. Mark attendance manually, or open the QR page for an active session. The QR
+   image and displayed URL rotate automatically every five seconds.
+10. Students sign in, allow precise location when required, and scan the current
+    QR code.
+11. Close the session to mark missing section records as `ABSENT`.
+12. As a Monitor, open the Reports page, choose a course and output, then
    generate the report.
-12. Open the audit log when you need to review attendance changes.
+13. Open the audit log when you need to review attendance changes.
 
 Attendance is recorded per section. One session has exactly 3 sections, each
 section counts as 1 attendance hour, and every 3 `LATE` records count as 1

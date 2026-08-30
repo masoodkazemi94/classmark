@@ -29,6 +29,12 @@ class TeacherCourseViewTests(TestCase):
             role=user_model.Role.STUDENT,
             student_code="STU-001",
         )
+        cls.cr = user_model.objects.create_user(
+            username="course-cr",
+            password="test-password",
+            role=user_model.Role.CR,
+            student_code="CR-001",
+        )
         cls.course = Course.objects.create(
             title="Introduction to Programming",
             code="CS-101",
@@ -105,6 +111,43 @@ class TeacherCourseViewTests(TestCase):
         self.client.force_login(self.student)
 
         response = self.client.get(reverse("courses:course-create"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_monitor_can_enable_and_edit_course_location_validation(self):
+        self.client.force_login(self.monitor)
+
+        response = self.client.post(
+            reverse("courses:course-edit", args=[self.course.pk]),
+            {
+                "title": self.course.title,
+                "code": self.course.code,
+                "start_date": "2026-09-01",
+                "end_date": "2026-12-15",
+                "require_attendance_location": "on",
+                "attendance_location_name": "Engineering building",
+                "attendance_latitude": "35.689200",
+                "attendance_longitude": "51.389000",
+                "attendance_radius_meters": "60",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("courses:course-detail", args=[self.course.pk]),
+        )
+        self.course.refresh_from_db()
+        self.assertTrue(self.course.require_attendance_location)
+        self.assertEqual(self.course.attendance_location_name, "Engineering building")
+        self.assertEqual(self.course.attendance_radius_meters, 60)
+
+    def test_cr_cannot_edit_course_location_settings(self):
+        Enrollment.objects.create(course=self.course, student=self.cr)
+        self.client.force_login(self.cr)
+
+        response = self.client.get(
+            reverse("courses:course-edit", args=[self.course.pk])
+        )
 
         self.assertEqual(response.status_code, 403)
 

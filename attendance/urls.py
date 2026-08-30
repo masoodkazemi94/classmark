@@ -15,6 +15,11 @@ urlpatterns = [
     ),
     path("sessions/<int:session_id>/qr/", views.session_qr, name="session-qr"),
     path(
+        "sessions/<int:session_id>/qr/refresh/",
+        views.session_qr_refresh,
+        name="session-qr-refresh",
+    ),
+    path(
         "sessions/<int:session_id>/notify/",
         views.session_notify,
         name="session-notify",

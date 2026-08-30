@@ -54,7 +54,20 @@ def course_create(request):
         return redirect("courses:course-detail", course_id=course.pk)
     if request.method == "POST":
         messages.error(request, "Course was not created. Correct the errors below.")
-    return render(request, "courses/course_form.html", {"form": form})
+    return render(request, "courses/course_form.html", {"form": form, "course": None})
+
+
+@monitor_required
+def course_edit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    form = CourseForm(request.POST or None, instance=course, monitor=course.monitor)
+    if request.method == "POST" and form.is_valid():
+        course = form.save()
+        messages.success(request, f"{course.code} settings were updated.")
+        return redirect("courses:course-detail", course_id=course.pk)
+    if request.method == "POST":
+        messages.error(request, "Course settings were not updated. Correct the errors below.")
+    return render(request, "courses/course_form.html", {"form": form, "course": course})
 
 
 @course_manager_required
@@ -152,6 +165,7 @@ def course_detail(request, course_id):
                 actor=request.user,
             ),
             "can_view_reports": is_monitor(request.user),
+            "can_edit_course": is_monitor(request.user),
         },
     )
 

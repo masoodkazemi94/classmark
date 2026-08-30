@@ -83,6 +83,32 @@ class CourseModelTests(TestCase):
 
         self.assertEqual(str(course), "CS-101 - Introduction to Programming")
 
+    def test_location_validation_requires_both_coordinates(self):
+        course = self.make_course(
+            require_attendance_location=True,
+            attendance_latitude="35.689200",
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            course.full_clean()
+
+        self.assertIn("attendance_latitude", context.exception.message_dict)
+
+    def test_valid_attendance_location_configuration(self):
+        course = self.make_course(
+            require_attendance_location=True,
+            attendance_location_name="Main campus",
+            attendance_latitude="35.689200",
+            attendance_longitude="51.389000",
+            attendance_radius_meters=75,
+        )
+
+        course.full_clean()
+        course.save()
+
+        self.assertTrue(course.require_attendance_location)
+        self.assertEqual(course.attendance_radius_meters, 75)
+
 
 class EnrollmentModelTests(TestCase):
     @classmethod

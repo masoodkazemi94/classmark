@@ -11,21 +11,76 @@
 </div>
 
 <div class="qr-shell">
-    <section class="qr-card">
+    <section class="qr-card" id="live-qr" data-refresh-url="{% url 'attendance:session-qr-refresh' session.pk %}" data-rotation-seconds="{{ qr_rotation_seconds }}">
         {% if qr_code_data_url %}
-            <span class="badge badge--active"><span class="badge-dot"></span>Ready to scan</span>
-            <img alt="QR code for student attendance scan" src="{{ qr_code_data_url }}" width="300" height="300">
-            <p class="qr-help">This QR code expires at <strong>{{ token.expires_at|date:"H:i:s" }}</strong>.</p>
+            <span class="badge badge--active" id="qr-status"><span class="badge-dot"></span>Live · rotates every {{ qr_rotation_seconds }} seconds</span>
+            <img id="qr-image" alt="QR code for student attendance scan" src="{{ qr_code_data_url }}" width="300" height="300">
+            <p class="qr-help">Current link: <code id="qr-url">{{ scan_url }}</code></p>
+            <p class="qr-help">Expires at <strong id="qr-expires-at">{{ token.expires_at|date:"H:i:s" }}</strong>. Next code in <strong id="qr-countdown">{{ qr_rotation_seconds }}</strong>s.</p>
         {% else %}
-            <div class="empty-state"><span class="empty-state__icon"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3Zm2 2v4h4V5H5Zm8-2h8v8h-8V3Zm2 2v4h4V5h-4ZM3 13h8v8H3v-8Zm2 2v4h4v-4H5Zm9-2h2v2h-2v-2Zm4 0h3v2h-3v-2Zm-5 4h4v4h-4v-4Zm6 0h2v4h-2v-4Z"/></svg></span><h2>No active QR code</h2><p>Generate a fresh code when students are ready.</p></div>
+            <span class="badge badge--active" id="qr-status"><span class="badge-dot"></span>Starting live QR…</span>
+            <img id="qr-image" alt="QR code for student attendance scan" width="300" height="300" hidden>
+            <p class="qr-help">Current link: <code id="qr-url">Generating…</code></p>
+            <p class="qr-help">Expires at <strong id="qr-expires-at">Generating…</strong>. Next code in <strong id="qr-countdown">{{ qr_rotation_seconds }}</strong>s.</p>
         {% endif %}
-        <form method="post" style="width:100%">{% csrf_token %}<button class="button--block" type="submit">Refresh QR</button></form>
+        <form method="post" style="width:100%">{% csrf_token %}<button class="button--block" type="submit">Refresh now</button></form>
     </section>
     <aside class="panel">
         <span class="eyebrow">How check-in works</span>
         <h2>Fast for students. Safe for the class.</h2>
-        <ol class="steps"><li>Students sign in with their own account.</li><li>They scan this code before it expires.</li><li>ClassPulse confirms active course enrollment.</li><li>Attendance is recorded once across all sections.</li></ol>
+        <ol class="steps"><li>Students sign in with their own account.</li><li>They scan the current code within {{ qr_rotation_seconds }} seconds.</li><li>ClassPulse confirms enrollment{% if session.course.require_attendance_location %} and checks that they are within {{ session.course.attendance_radius_meters }} m of the course location{% endif %}.</li><li>Attendance is recorded once across all sections.</li></ol>
+        {% if session.course.require_attendance_location %}<div class="panel" style="background:var(--surface-soft)"><strong>Location check enabled</strong><p class="panel-subtitle">{{ session.course.attendance_location_name|default:"Configured course location" }} · {{ session.course.attendance_radius_meters }} m radius</p></div>{% endif %}
         <div class="panel" style="background:var(--surface-soft)"><strong>Security note</strong><p class="panel-subtitle">Refreshing creates a new secure token and immediately disables the previous one.</p></div>
     </aside>
 </div>
+<script>
+(() => {
+    const shell = document.getElementById("live-qr");
+    const image = document.getElementById("qr-image");
+    const url = document.getElementById("qr-url");
+    const expires = document.getElementById("qr-expires-at");
+    const countdown = document.getElementById("qr-countdown");
+    const status = document.getElementById("qr-status");
+    const csrfToken = shell.querySelector("input[name=csrfmiddlewaretoken]").value;
+    let seconds = Number(shell.dataset.rotationSeconds) || 5;
+    let remaining = seconds;
+    let refreshing = false;
+
+    async function refreshQr() {
+        if (refreshing) return;
+        refreshing = true;
+        try {
+            const response = await fetch(shell.dataset.refreshUrl, {
+                method: "POST",
+                headers: {"X-CSRFToken": csrfToken, "Accept": "application/json"},
+                credentials: "same-origin"
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "QR refresh failed.");
+            image.src = data.qr_code_data_url;
+            image.hidden = false;
+            url.textContent = data.scan_url;
+            expires.textContent = data.expires_at;
+            expires.hidden = false;
+            seconds = Number(data.rotation_seconds) || seconds;
+            remaining = seconds;
+            countdown.textContent = remaining;
+            status.className = "badge badge--active";
+            status.innerHTML = '<span class="badge-dot"></span>Live · rotates every ' + seconds + ' seconds';
+        } catch (error) {
+            status.textContent = error.message;
+            status.className = "badge badge--closed";
+        } finally {
+            refreshing = false;
+        }
+    }
+
+    refreshQr();
+    window.setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) refreshQr();
+        countdown.textContent = Math.max(remaining, 0);
+    }, 1000);
+})();
+</script>
 {% endblock %}
