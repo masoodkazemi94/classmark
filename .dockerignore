@@ -1,0 +1,12 @@
+.git
+.gitignore
+.venv
+.postgres
+.postgres.log
+.env
+.env.production
+__pycache__
+*.py[cod]
+*.sqlite3
+staticfiles
+tests

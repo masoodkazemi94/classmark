@@ -41,6 +41,14 @@ Expected local variables:
 SECRET_KEY=replace-with-a-secure-random-value
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=
+
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SECURE_HSTS_SECONDS=31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+SECURE_HSTS_PRELOAD=True
 
 POSTGRES_DB=classpulse
 POSTGRES_USER=classpulse
@@ -149,6 +157,62 @@ MONITOR  Access to every course, reports, CR promotion, and audit history
 CR       Access to assigned courses; sessions, QR, enrollment, and attendance
 STUDENT  QR attendance for courses where the student is actively enrolled
 ```
+
+## Docker Production Deployment
+
+The production stack in `compose.yaml` contains three services:
+
+* `web`: Django 5.2 served by Gunicorn
+* `db`: PostgreSQL 16 with a persistent named volume
+* `nginx`: the public reverse proxy and static-file server
+
+Create a server-only `.env.production` based on `.env.example`, then run:
+
+```bash
+docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production ps
+```
+
+The web entrypoint applies migrations automatically. It never creates sample
+data or users. Create the first Admin explicitly after the stack is healthy:
+
+```bash
+docker compose --env-file .env.production exec web python manage.py createsuperuser
+```
+
+After `createsuperuser`, set that user's ClassPulse role to `ADMIN` through the
+Django shell or admin interface. Useful operational commands:
+
+```bash
+docker compose --env-file .env.production logs -f web
+docker compose --env-file .env.production restart
+docker compose --env-file .env.production exec web python manage.py check
+```
+
+For an IP-only HTTP deployment, disable SSL redirect, secure cookies, and HSTS
+in `.env.production`. Re-enable them after a domain and trusted HTTPS
+certificate are configured.
+
+### Automatic deployment from GitHub
+
+`.github/workflows/deploy.yml` runs the Django tests and migration check on
+every push to `main`. If they pass, it uploads an immutable release through the
+dedicated `deploy` SSH account and waits for the Docker services and public
+endpoint to become healthy. Production environment values remain on the server
+and the PostgreSQL/static volumes are reused.
+
+The workflow reads these secrets from the GitHub `production` environment:
+
+```text
+DEPLOY_HOST
+DEPLOY_USER
+DEPLOY_SSH_KEY
+DEPLOY_KNOWN_HOSTS
+```
+
+The current server is already configured with the matching deployment key.
+Failed releases do not run when tests fail, and concurrent production
+deployments are serialized.
 
 A CR may edit ordinary students and their own attendance, but cannot edit or
 remove another CR. CRs cannot open reports or the attendance audit log.

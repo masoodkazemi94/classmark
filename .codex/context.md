@@ -79,3 +79,20 @@ python manage.py makemigrations --check --dry-run
 ```
 
 Keep `PROJECT_STATE.md` current.
+
+## Production deployment
+
+The current production deployment is at `http://84.200.192.35/` under
+`/opt/classpulse`. Docker Compose runs Gunicorn/Django, PostgreSQL 16, and Nginx
+with persistent named volumes. `.env.production` is root-readable only and is
+not committed. The database was deployed without seed data and contains only
+one Admin superuser. Native Nginx/PostgreSQL services are disabled; Docker owns
+the production services. The firewall permits only SSH and HTTP. HTTPS remains
+pending until a domain is available.
+
+Pushes to `main` use `.github/workflows/deploy.yml`: tests and migration checks
+must pass before an immutable release is uploaded with the dedicated `deploy`
+SSH account. Secrets are scoped to the GitHub `production` environment. The
+server keeps its environment file under `/opt/classpulse/shared` and releases
+under `/opt/classpulse/releases`; Docker project name `classpulse` preserves the
+existing volumes across releases.

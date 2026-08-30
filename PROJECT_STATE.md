@@ -1,11 +1,15 @@
 # PROJECT_STATE.md — ClassPulse
 
-Last updated: 2026-08-24
+Last updated: 2026-08-30
 
 ## Status
 
 ClassPulse is a working Django 5.2 + PostgreSQL classroom attendance MVP.
 The Monitor/CR authorization redesign and attendance audit history are complete.
+
+The production instance is deployed at `http://84.200.192.35/` on Ubuntu 24.04
+using Docker Compose, Gunicorn, PostgreSQL 16, and Nginx. Its database is empty
+except for one `ADMIN` superuser; sample data was not loaded.
 
 ## Stack
 
@@ -103,6 +107,10 @@ authorization boundary.
 * Fully clickable course cards and reusable searchable, keyboard-friendly
   student selectors for enrollment, promotion, and attendance entry
 * Idempotent sample-data command
+* Docker production stack with isolated web/database/proxy services, health
+  checks, automatic migrations, restart policies, and persistent data volumes
+* GitHub Actions CI/CD on pushes to `main`, with tests before deployment,
+  environment-scoped secrets, a dedicated SSH account, and health-gated releases
 
 ## Database migrations
 
@@ -151,6 +159,9 @@ python manage.py makemigrations --check --dry-run
 ```text
 python manage.py test: 163 tests passed
 python manage.py makemigrations --check --dry-run: no changes detected
+production Docker services: web and PostgreSQL healthy; Nginx reachable
+production data: 1 Admin plus 1 user-created Monitor, 0 courses, 0 enrollments,
+0 sessions, 0 attendance
 ```
 
 ## Known limitations
@@ -159,3 +170,5 @@ python manage.py makemigrations --check --dry-run: no changes detected
 * Audit web history shows the newest 500 entries and has no filtering UI yet.
 * Email is delivered after the database commit in the web request; this MVP has
   no background job queue. SMTP failures do not undo attendance or session data.
+* The current IP-only deployment uses HTTP. Add a domain and trusted certificate
+  before enabling production HTTPS redirects, secure cookies, and HSTS.
