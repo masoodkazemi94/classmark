@@ -29,13 +29,48 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (
             "ClassPulse",
-            {"fields": ("role", "student_code", "phone_number")},
+            {
+                "fields": (
+                    "role",
+                    "student_code",
+                    "phone_number",
+                    "passport_number",
+                    "passport_expiry",
+                    "is_in_dormitory",
+                    "dormitory_room",
+                    "wechat_id",
+                )
+            },
+        ),
+        (
+            "Administrative receipts",
+            {
+                "fields": (
+                    "insurance_receipt",
+                    "tuition_receipt",
+                    "dormitory_receipt",
+                )
+            },
         ),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (
             "ClassPulse",
-            {"fields": ("role", "student_code", "phone_number")},
+            {
+                "fields": (
+                    "role",
+                    "student_code",
+                    "phone_number",
+                    "passport_number",
+                    "passport_expiry",
+                    "is_in_dormitory",
+                    "dormitory_room",
+                    "wechat_id",
+                    "insurance_receipt",
+                    "tuition_receipt",
+                    "dormitory_receipt",
+                )
+            },
         ),
     )
 

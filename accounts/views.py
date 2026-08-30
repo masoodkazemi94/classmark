@@ -1,6 +1,7 @@
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
@@ -9,7 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .decorators import course_manager_required, is_monitor, monitor_required
-from .forms import PromoteCRForm, StudentCreateForm, StudentUpdateForm
+from .forms import ProfileForm, PromoteCRForm, StudentCreateForm, StudentUpdateForm
 from .models import Notification, User
 
 from courses.models import Course, Enrollment
@@ -19,6 +20,35 @@ from courses.models import Course, Enrollment
 def logout_view(request):
     logout(request)
     return redirect("home")
+
+
+@login_required
+def profile(request):
+    form = ProfileForm(request.POST or None, instance=request.user)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Your profile was updated.")
+        return redirect("accounts:profile")
+    if request.method == "POST":
+        messages.error(request, "Your profile was not updated. Correct the errors below.")
+    return render(
+        request,
+        "accounts/profile.html",
+        {"form": form, "profile_user": request.user},
+    )
+
+
+@login_required
+def password_change(request):
+    form = PasswordChangeForm(request.user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        messages.success(request, "Your password was changed successfully.")
+        return redirect("accounts:profile")
+    if request.method == "POST":
+        messages.error(request, "Your password was not changed. Correct the errors below.")
+    return render(request, "accounts/password_change.html", {"form": form})
 
 
 @monitor_required
@@ -122,7 +152,11 @@ def student_update(request, student_id):
         _managed_students(request.user),
         pk=student_id,
     )
-    form = StudentUpdateForm(request.POST or None, instance=student)
+    form = StudentUpdateForm(
+        request.POST or None,
+        instance=student,
+        actor=request.user,
+    )
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, f"{student.username} was updated.")

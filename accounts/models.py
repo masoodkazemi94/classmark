@@ -24,6 +24,14 @@ class User(AbstractUser):
         blank=True,
     )
     phone_number = models.CharField(max_length=20, blank=True)
+    passport_number = models.CharField(max_length=100, blank=True)
+    passport_expiry = models.DateField(blank=True, null=True)
+    is_in_dormitory = models.BooleanField(default=False)
+    dormitory_room = models.CharField(max_length=100, blank=True)
+    wechat_id = models.CharField(max_length=100, blank=True)
+    insurance_receipt = models.BooleanField(default=False)
+    tuition_receipt = models.BooleanField(default=False)
+    dormitory_receipt = models.BooleanField(default=False)
 
     def clean(self):
         super().clean()

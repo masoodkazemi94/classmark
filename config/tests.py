@@ -74,6 +74,19 @@ class AdminCustomizationTests(TestCase):
         self.assertIn(AttendanceToken, admin.site._registry)
         self.assertIsInstance(admin.site._registry[AttendanceToken], ModelAdmin)
 
+    def test_user_admin_forms_include_profile_and_receipt_fields(self):
+        self.client.force_login(self.admin_user)
+
+        add_response = self.client.get(reverse("admin:accounts_user_add"))
+        change_response = self.client.get(
+            reverse("admin:accounts_user_change", args=[self.admin_user.pk])
+        )
+
+        self.assertEqual(add_response.status_code, 200)
+        self.assertEqual(change_response.status_code, 200)
+        self.assertContains(add_response, "Insurance receipt")
+        self.assertContains(change_response, "Passport expiry")
+
     def test_teacher_admin_dashboard_shows_owned_course_shortcuts(self):
         user_model = get_user_model()
         teacher = user_model.objects.create_user(

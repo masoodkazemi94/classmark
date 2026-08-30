@@ -8,6 +8,8 @@ app_name = "accounts"
 urlpatterns = [
     path("login/", LoginView.as_view(template_name="accounts/login.html"), name="login"),
     path("logout/", views.logout_view, name="logout"),
+    path("profile/", views.profile, name="profile"),
+    path("profile/password/", views.password_change, name="password-change"),
     path("notifications/", views.notification_list, name="notification-list"),
     path(
         "notifications/read-all/",

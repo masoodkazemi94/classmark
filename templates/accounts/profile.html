@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}My profile | ClassPulse{% endblock %}
+
+{% block content %}
+<div class="page-heading page-heading--split">
+    <div>
+        <span class="eyebrow">My account</span>
+        <h1>Profile</h1>
+        <p class="page-lead">Keep your identity and contact details current. Your email address receives class and attendance notifications.</p>
+    </div>
+    <div class="page-heading__actions"><a class="button button--secondary" href="{% url 'accounts:password-change' %}">Change password</a></div>
+</div>
+
+<div class="layout-grid">
+    <section class="form-shell">
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="form-alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="field-grid field-grid--two">
+                {% for field in form %}
+                    <div class="field{% if field.errors %} field--error{% endif %}">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="form-actions"><button type="submit">Save profile</button></div>
+        </form>
+    </section>
+
+    <aside class="section-stack">
+        <section class="panel">
+            <span class="eyebrow">Account</span>
+            <h2>{{ profile_user.get_full_name|default:profile_user.username }}</h2>
+            <p class="panel-subtitle">@{{ profile_user.username }} · {{ profile_user.get_role_display }}{% if profile_user.student_code %} · {{ profile_user.student_code }}{% endif %}</p>
+        </section>
+        <section class="panel">
+            <span class="eyebrow">Administrative records</span>
+            <h2>Receipt status</h2>
+            <p class="panel-subtitle">Only a Monitor or Admin can update these values.</p>
+            <dl class="profile-facts">
+                <div><dt>Insurance</dt><dd>{% if profile_user.insurance_receipt %}Received{% else %}Not received{% endif %}</dd></div>
+                <div><dt>Tuition</dt><dd>{% if profile_user.tuition_receipt %}Received{% else %}Not received{% endif %}</dd></div>
+                <div><dt>Dormitory</dt><dd>{% if profile_user.dormitory_receipt %}Received{% else %}Not received{% endif %}</dd></div>
+            </dl>
+        </section>
+    </aside>
+</div>
+{% endblock %}

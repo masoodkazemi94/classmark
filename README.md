@@ -257,6 +257,13 @@ detail page. Every notification remains available in the app; email is sent
 only when the student account has an email address. SMTP errors are recorded
 without cancelling the class or attendance change.
 
+Every signed-in user can open their profile from the account chip in the top
+navigation. Profile details are optional and include passport number/expiry,
+dormitory status and room, phone, notification email, and WeChat ID. Users may
+also change their own password. Monitor/Admin student forms contain separate
+yes/no controls for insurance, tuition, and dormitory receipt status; CRs and
+students cannot change those administrative controls.
+
 ## Basic Usage Flow
 
 1. Sign in as a Monitor or assigned CR.

@@ -39,13 +39,13 @@
 
             <div class="account-nav">
                 {% if user.is_authenticated %}
-                    <div class="user-chip">
+                    <a class="user-chip" href="{% url 'accounts:profile' %}" title="Open your profile">
                         <span class="user-avatar">{{ user.username|first|upper }}</span>
                         <span class="user-meta">
                             <strong>{{ user.username }}</strong>
                             <small>{{ user.get_role_display }}</small>
                         </span>
-                    </div>
+                    </a>
                     <form method="post" action="{% url 'accounts:logout' %}">
                         {% csrf_token %}
                         <button class="icon-button" type="submit" title="Sign out" aria-label="Sign out">

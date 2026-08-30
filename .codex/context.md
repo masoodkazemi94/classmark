@@ -21,6 +21,13 @@ records who created the course but all Monitors can access all courses.
 Student deletion is implemented as safe deactivation: deactivate the user and
 active enrollments, but retain the user, attendance records, and audit history.
 
+Every signed-in user has a private profile with optional name, notification
+email, phone, passport number/expiry, dormitory status/room, and WeChat ID.
+Users can change their own password without being signed out. Insurance,
+tuition, and dormitory receipt flags are boolean administrative fields that only
+Monitor/Admin actors may change through student management or Django admin; CR
+and self-service forms never accept those fields.
+
 ## Attendance rules
 
 * Every session has exactly three sections.

@@ -5,6 +5,45 @@ from django.contrib.auth.forms import UserCreationForm
 from courses.models import Course
 
 
+PERSONAL_PROFILE_FIELDS = (
+    "first_name",
+    "last_name",
+    "email",
+    "phone_number",
+    "passport_number",
+    "passport_expiry",
+    "is_in_dormitory",
+    "dormitory_room",
+    "wechat_id",
+)
+ADMINISTRATIVE_RECEIPT_FIELDS = (
+    "insurance_receipt",
+    "tuition_receipt",
+    "dormitory_receipt",
+)
+
+
+def _can_edit_receipts(actor):
+    user_model = get_user_model()
+    return actor.is_superuser or actor.role in {
+        user_model.Role.ADMIN,
+        user_model.Role.MONITOR,
+    }
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = get_user_model()
+        fields = PERSONAL_PROFILE_FIELDS
+        widgets = {
+            "passport_expiry": forms.DateInput(attrs={"type": "date"}),
+        }
+        help_texts = {
+            "email": "Class and attendance notifications are sent to this address.",
+            "dormitory_room": "Leave blank if you do not live in the dormitory.",
+        }
+
+
 class StudentChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, student):
         name = student.get_full_name() or student.username
@@ -40,15 +79,19 @@ class StudentCreateForm(UserCreationForm):
         model = get_user_model()
         fields = (
             "username",
-            "first_name",
-            "last_name",
-            "email",
             "student_code",
-            "phone_number",
+            *PERSONAL_PROFILE_FIELDS,
+            *ADMINISTRATIVE_RECEIPT_FIELDS,
         )
+        widgets = {
+            "passport_expiry": forms.DateInput(attrs={"type": "date"}),
+        }
 
     def __init__(self, *args, actor, **kwargs):
         super().__init__(*args, **kwargs)
+        if not _can_edit_receipts(actor):
+            for field_name in ADMINISTRATIVE_RECEIPT_FIELDS:
+                self.fields.pop(field_name)
         courses = Course.objects.filter(is_active=True)
         if actor.role == get_user_model().Role.CR:
             courses = courses.filter(
@@ -63,11 +106,17 @@ class StudentCreateForm(UserCreationForm):
         self.order_fields(
             [
                 "username",
+                "student_code",
                 "first_name",
                 "last_name",
                 "email",
-                "student_code",
                 "phone_number",
+                "passport_number",
+                "passport_expiry",
+                "is_in_dormitory",
+                "dormitory_room",
+                "wechat_id",
+                *ADMINISTRATIVE_RECEIPT_FIELDS,
                 "course",
                 "password1",
                 "password2",
@@ -87,9 +136,16 @@ class StudentUpdateForm(forms.ModelForm):
         model = get_user_model()
         fields = (
             "username",
-            "first_name",
-            "last_name",
-            "email",
             "student_code",
-            "phone_number",
+            *PERSONAL_PROFILE_FIELDS,
+            *ADMINISTRATIVE_RECEIPT_FIELDS,
         )
+        widgets = {
+            "passport_expiry": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, actor, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not _can_edit_receipts(actor):
+            for field_name in ADMINISTRATIVE_RECEIPT_FIELDS:
+                self.fields.pop(field_name)

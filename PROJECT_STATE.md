@@ -68,6 +68,11 @@ authorization boundary.
 * Environment-based development, production, and isolated test settings
 * Custom user roles and student-code validation
 * Public login/logout pages for Monitor, CR, and Student accounts
+* Private self-service profile page for every role with optional passport,
+  dormitory, phone, email, and WeChat details
+* Secure self-service password changes that preserve the signed-in session
+* Monitor/Admin-only insurance, tuition, and dormitory receipt checkboxes;
+  receipt changes are blocked for self-service users and CR managers
 * Monitor-only searchable student directory with create and edit forms
 * Safe student deactivation/restoration that disables active enrollments while
   preserving attendance and audit history
@@ -132,6 +137,8 @@ The current migrations preserve existing data:
   normalizes existing superusers to the `ADMIN` role.
 * `attendance.0006` allows both Student and CR users in attendance records.
 * `accounts.0004` adds durable in-app notifications and email delivery status.
+* `accounts.0005` adds optional user profile details and administrative receipt
+  status flags.
 
 ## Sample data
 
@@ -164,7 +171,7 @@ python manage.py makemigrations --check --dry-run
 ## Current verification
 
 ```text
-python manage.py test: 172 tests passed
+python manage.py test: 180 tests passed
 python manage.py makemigrations --check --dry-run: no changes detected
 production Docker services: web and PostgreSQL healthy; Nginx reachable
 production data: 1 Admin plus 1 user-created Monitor, 0 courses, 0 enrollments,
